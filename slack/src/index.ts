@@ -1,0 +1,224 @@
+#!/usr/bin/env node
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
+import { WebClient } from "@slack/web-api"
+import { createStatefulServer } from "@smithery/sdk/server/stateful.js"
+import { z } from "zod"
+
+// Create stateful server with Slack client configuration
+const { app } = createStatefulServer<{
+	slackBotToken: string
+	slackTeamId: string
+}>(({ config }) => {
+	console.log("Starting Slack MCP Server...")
+
+	// Create a new MCP server with the higher-level API
+	const server = new McpServer({
+		name: "Slack MCP Server",
+		version: "1.0.0",
+	})
+
+	// Initialize the Slack client
+	const slackClient = new WebClient(config.slackBotToken)
+
+	// Define all tools using the higher-level API with zod schemas for validation
+
+	// List channels tool
+	server.tool(
+		"slack_list_channels",
+		"List public or pre-defined channels in the workspace with pagination",
+		{
+			limit: z
+				.number()
+				.optional()
+				.default(100)
+				.describe(
+					"Maximum number of channels to return (default 100, max 200)",
+				),
+			cursor: z
+				.string()
+				.optional()
+				.describe("Pagination cursor for next page of results"),
+		},
+		async ({ limit, cursor }: { limit: number; cursor?: string }) => {
+			const response = await slackClient.conversations.list({
+				limit,
+				cursor,
+			})
+			return {
+				content: [{ type: "text", text: JSON.stringify(response) }],
+			}
+		},
+	)
+
+	// Post message tool
+	server.tool(
+		"slack_post_message",
+		"Post a new message to a Slack channel",
+		{
+			channel_id: z.string().describe("The ID of the channel to post to"),
+			text: z.string().describe("The message text to post"),
+		},
+		async ({ channel_id, text }) => {
+			const response = await slackClient.chat.postMessage({
+				channel: channel_id,
+				text,
+			})
+			return {
+				content: [{ type: "text", text: JSON.stringify(response) }],
+			}
+		},
+	)
+
+	// Reply to thread tool
+	server.tool(
+		"slack_reply_to_thread",
+		"Reply to a specific message thread in Slack",
+		{
+			channel_id: z
+				.string()
+				.describe("The ID of the channel containing the thread"),
+			thread_ts: z
+				.string()
+				.describe(
+					"The timestamp of the parent message in the format '1234567890.123456'. Timestamps in the format without the period can be converted by adding the period such that 6 numbers come after it.",
+				),
+			text: z.string().describe("The reply text"),
+		},
+		async ({ channel_id, thread_ts, text }) => {
+			const response = await slackClient.chat.postMessage({
+				channel: channel_id,
+				thread_ts,
+				text,
+			})
+			return {
+				content: [{ type: "text", text: JSON.stringify(response) }],
+			}
+		},
+	)
+
+	// Add reaction tool
+	server.tool(
+		"slack_add_reaction",
+		"Add a reaction emoji to a message",
+		{
+			channel_id: z
+				.string()
+				.describe("The ID of the channel containing the message"),
+			timestamp: z
+				.string()
+				.describe("The timestamp of the message to react to"),
+			reaction: z
+				.string()
+				.describe("The name of the emoji reaction (without ::)"),
+		},
+		async ({ channel_id, timestamp, reaction }) => {
+			const response = await slackClient.reactions.add({
+				channel: channel_id,
+				timestamp,
+				name: reaction,
+			})
+			return {
+				content: [{ type: "text", text: JSON.stringify(response) }],
+			}
+		},
+	)
+
+	// Get channel history tool
+	server.tool(
+		"slack_get_channel_history",
+		"Get recent messages from a channel",
+		{
+			channel_id: z.string().describe("The ID of the channel"),
+			limit: z
+				.number()
+				.optional()
+				.default(10)
+				.describe("Number of messages to retrieve (default 10)"),
+		},
+		async ({ channel_id, limit }) => {
+			const response = await slackClient.conversations.history({
+				channel: channel_id,
+				limit,
+			})
+			return {
+				content: [{ type: "text", text: JSON.stringify(response) }],
+			}
+		},
+	)
+
+	// Get thread replies tool
+	server.tool(
+		"slack_get_thread_replies",
+		"Get all replies in a message thread",
+		{
+			channel_id: z
+				.string()
+				.describe("The ID of the channel containing the thread"),
+			thread_ts: z
+				.string()
+				.describe(
+					"The timestamp of the parent message in the format '1234567890.123456'. Timestamps in the format without the period can be converted by adding the period such that 6 numbers come after it.",
+				),
+		},
+		async ({ channel_id, thread_ts }) => {
+			const response = await slackClient.conversations.replies({
+				channel: channel_id,
+				ts: thread_ts, // Note: Slack API uses 'ts' not 'thread_ts' for the replies method
+			})
+			return {
+				content: [{ type: "text", text: JSON.stringify(response) }],
+			}
+		},
+	)
+
+	// Get users tool
+	server.tool(
+		"slack_get_users",
+		"Get a list of all users in the workspace with their basic profile information",
+		{
+			cursor: z
+				.string()
+				.optional()
+				.describe("Pagination cursor for next page of results"),
+			limit: z
+				.number()
+				.optional()
+				.default(100)
+				.describe("Maximum number of users to return (default 100, max 200)"),
+		},
+		async ({ limit, cursor }) => {
+			const response = await slackClient.users.list({
+				limit,
+				cursor,
+			})
+			return {
+				content: [{ type: "text", text: JSON.stringify(response) }],
+			}
+		},
+	)
+
+	// Get user profile tool
+	server.tool(
+		"slack_get_user_profile",
+		"Get detailed profile information for a specific user",
+		{
+			user_id: z.string().describe("The ID of the user"),
+		},
+		async ({ user_id }) => {
+			const response = await slackClient.users.profile.get({
+				user: user_id,
+			})
+			return {
+				content: [{ type: "text", text: JSON.stringify(response) }],
+			}
+		},
+	)
+
+	return server.server
+})
+
+// Start the server
+const PORT = process.env.PORT || 8081
+app.listen(PORT, () => {
+	console.log(`MCP server running on port ${PORT}`)
+})
