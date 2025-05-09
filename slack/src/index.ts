@@ -11,15 +11,15 @@ import { z } from "zod"
 // Create stateful server with Slack client configuration
 const { app } = createStatefulServer<{
 	token: string
-	appToken: string
+	appToken?: string
 }>(({ config }) => {
 	try {
 		console.log("Starting Slack MCP Server...")
-
+		const socketMode = !!config.appToken
 		const app = new blot.App({
 			token: config.token,
 			appToken: config.appToken,
-			socketMode: true,
+			socketMode,
 		})
 		;(async () => {
 			await app.start()
@@ -39,80 +39,83 @@ const { app } = createStatefulServer<{
 
 		// Initialize the Slack client
 		const slackClient = app.client
-		// Define type for event data to avoid using 'any'
-		interface EventData {
-			event: Record<string, unknown>
-			context: Record<string, unknown>
-		}
 
-		// Map to store event buffers for each event type
-		const eventBuffers: Record<string, EventData[]> = {}
-
-		// Helper to get or create an event buffer for a specific event type
-		const getEventBuffer = (eventName: string): EventData[] => {
-			if (!eventBuffers[eventName]) {
-				eventBuffers[eventName] = []
+		if (socketMode) {
+			// Define type for event data to avoid using 'any'
+			interface EventData {
+				event: Record<string, unknown>
+				context: Record<string, unknown>
 			}
-			return eventBuffers[eventName]
-		}
 
-		// Register the events resource
-		server.resource(
-			"events",
-			// Define the resource template for events
-			new ResourceTemplate("events://{eventName}", { list: undefined }),
-			async (uri, params) => {
-				// Extract eventName from params
-				const eventName = (params as { eventName: string }).eventName
-				return {
-					contents: [
-						{
-							uri: uri.href,
-							text: JSON.stringify(getEventBuffer(eventName)),
-						},
-					],
+			// Map to store event buffers for each event type
+			const eventBuffers: Record<string, EventData[]> = {}
+
+			// Helper to get or create an event buffer for a specific event type
+			const getEventBuffer = (eventName: string): EventData[] => {
+				if (!eventBuffers[eventName]) {
+					eventBuffers[eventName] = []
 				}
-			},
-		)
+				return eventBuffers[eventName]
+			}
 
-		// Map to track which events we've already registered listeners for
-		const registeredEvents = new Set<string>()
-
-		// Handle subscription requests for any event type
-		server.server.setRequestHandler(
-			SubscribeRequestSchema,
-			async ({ params }) => {
-				// Parse the event name from the URI safely using optional chaining
-				const match = params.uri?.match(/^events:\/\/(.+)$/)
-				if (match?.[1]) {
-					const eventName = match[1]
-
-					// Only register the event listener once
-					if (!registeredEvents.has(eventName)) {
-						console.log(`Registering listener for Slack event: ${eventName}`)
-
-						// Using proper types for the Slack event handler
-						// The eventName could be a string or string[] so ensure it's a string
-						const eventType = Array.isArray(eventName)
-							? eventName[0]
-							: eventName
-						app.event(eventType, async ({ event, context, client }) => {
-							console.log(`Received Slack event: ${eventType}`)
-							getEventBuffer(eventType).push({
-								event: event as unknown as Record<string, unknown>,
-								context: context as unknown as Record<string, unknown>,
-							})
-							server.server.sendResourceUpdated({
-								uri: `events://${eventType}`,
-							})
-						})
-
-						registeredEvents.add(eventType)
+			// Register the events resource
+			server.resource(
+				"events",
+				// Define the resource template for events
+				new ResourceTemplate("events://{eventName}", { list: undefined }),
+				async (uri, params) => {
+					// Extract eventName from params
+					const eventName = (params as { eventName: string }).eventName
+					return {
+						contents: [
+							{
+								uri: uri.href,
+								text: JSON.stringify(getEventBuffer(eventName)),
+							},
+						],
 					}
-				}
-				return {}
-			},
-		)
+				},
+			)
+
+			// Map to track which events we've already registered listeners for
+			const registeredEvents = new Set<string>()
+
+			// Handle subscription requests for any event type
+			server.server.setRequestHandler(
+				SubscribeRequestSchema,
+				async ({ params }) => {
+					// Parse the event name from the URI safely using optional chaining
+					const match = params.uri?.match(/^events:\/\/(.+)$/)
+					if (match?.[1]) {
+						const eventName = match[1]
+
+						// Only register the event listener once
+						if (!registeredEvents.has(eventName)) {
+							console.log(`Registering listener for Slack event: ${eventName}`)
+
+							// Using proper types for the Slack event handler
+							// The eventName could be a string or string[] so ensure it's a string
+							const eventType = Array.isArray(eventName)
+								? eventName[0]
+								: eventName
+							app.event(eventType, async ({ event, context, client }) => {
+								console.log(`Received Slack event: ${eventType}`)
+								getEventBuffer(eventType).push({
+									event: event as unknown as Record<string, unknown>,
+									context: context as unknown as Record<string, unknown>,
+								})
+								server.server.sendResourceUpdated({
+									uri: `events://${eventType}`,
+								})
+							})
+
+							registeredEvents.add(eventType)
+						}
+					}
+					return {}
+				},
+			)
+		}
 
 		// List channels tool
 		server.tool(

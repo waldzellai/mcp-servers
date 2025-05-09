@@ -3,12 +3,13 @@ startCommand:
   configSchema:
     type: object
     required:
-      - slackBotToken
-      - slackTeamId
+      - token
     properties:
-      slackBotToken:
+      token:
         type: string
         description: The Bot User OAuth Token for the Slack app.
-      slackTeamId:
+      appToken:
         type: string
-        description: The Slack Team ID for the workspace.
+        description: The app token for the Slack app.
+  exampleConfig:
+    token: xoxb-1234567890-1234567890-1234567890
