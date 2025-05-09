@@ -1,0 +1,14 @@
+startCommand:
+  type: http
+  configSchema:
+    type: object
+    required:
+      - slackBotToken
+      - slackTeamId
+    properties:
+      slackBotToken:
+        type: string
+        description: The Bot User OAuth Token for the Slack app.
+      slackTeamId:
+        type: string
+        description: The Slack Team ID for the workspace.
