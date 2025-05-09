@@ -17,8 +17,9 @@
 	},
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.11.0",
+		"@slack/bolt": "^4.2.1",
 		"@slack/web-api": "^7.9.1",
-		"@smithery/sdk": "^1.2.2"
+		"@smithery/sdk": "^1.3.2"
 	},
 	"devDependencies": {
 		"@types/node": "^22",
