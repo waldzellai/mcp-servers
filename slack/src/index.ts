@@ -11,6 +11,7 @@ import { z } from "zod"
 // Create stateful server with Slack client configuration
 const { app } = createStatefulServer<{
 	token: string
+	signingSecret?: string
 	appToken?: string
 }>(({ config }) => {
 	try {
@@ -18,6 +19,7 @@ const { app } = createStatefulServer<{
 		const socketMode = !!config.appToken
 		const app = new blot.App({
 			token: config.token,
+			signingSecret: config.signingSecret,
 			appToken: config.appToken,
 			socketMode,
 		})

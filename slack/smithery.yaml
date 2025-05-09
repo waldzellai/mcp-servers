@@ -8,6 +8,9 @@ startCommand:
       token:
         type: string
         description: The Bot User OAuth Token for the Slack app.
+      signingSecret:
+        type: string
+        description: The signing secret for the Slack app.
       appToken:
         type: string
         description: The app token for the Slack app.
