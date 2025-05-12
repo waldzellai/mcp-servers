@@ -9,4 +9,4 @@ startCommand:
         type: string
         description: The personal access token for accessing the GitHub API.
   exampleConfig:
-    token: xoxb-1234567890-1234567890-1234567890
+    githubPersonalAccessToken: xoxb-1234567890-1234567890-1234567890
