@@ -7,7 +7,7 @@ import { registerIssueTools } from "./tools/issues.js"
 import { registerRepositoryTools } from "./tools/repositories.js"
 import { registerPullRequestTools } from "./tools/pullrequests.js"
 
-// Create stateful server with GitHub token configuration
+// Create stateless server with GitHub token configuration
 const { app } = createStatelessServer<{
   token: string
 }>(({ config }) => {
