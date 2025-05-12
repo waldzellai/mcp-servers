@@ -7,9 +7,9 @@ import { registerIssueTools } from "./tools/issues.js"
 import { registerRepositoryTools } from "./tools/repositories.js"
 import { registerPullRequestTools } from "./tools/pullrequests.js"
 
-// Create stateless server with GitHub token configuration
+// Create stateless server with GitHub personal token configuration
 const { app } = createStatelessServer<{
-  token: string
+  githubPersonalAccessToken: string
 }>(({ config }) => {
   try {
     console.log("Starting GitHub MCP Server...")
@@ -21,7 +21,7 @@ const { app } = createStatelessServer<{
     })
 
     // Initialize Octokit client
-    const octokit = new Octokit({ auth: config.token })
+    const octokit = new Octokit({ auth: config.githubPersonalAccessToken })
 
     // Register tool groups
     registerSearchTools(server, octokit)
