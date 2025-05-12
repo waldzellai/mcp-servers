@@ -1,0 +1,12 @@
+startCommand:
+  type: http
+  configSchema:
+    type: object
+    required:
+      - personalAccessToken
+    properties:
+      personalAccessToken:
+        type: string
+        description: Personal Access Token (PAT) for Github.
+  exampleConfig:
+    token: xoxb-1234567890-1234567890-1234567890
