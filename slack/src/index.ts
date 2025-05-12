@@ -158,45 +158,26 @@ const { app } = createStatefulServer<{
 			},
 		)
 
-		// Post message tool
+		// Post message tool (with optional thread reply capability)
 		server.tool(
 			"slack_post_message",
-			"Post a new message to a Slack channel",
+			"Post a new message to a Slack channel or reply to a thread",
 			{
 				channel_id: z.string().describe("The ID of the channel to post to"),
 				text: z.string().describe("The message text to post"),
-			},
-			async ({ channel_id, text }) => {
-				const response = await slackClient.chat.postMessage({
-					channel: channel_id,
-					text,
-				})
-				return {
-					content: [{ type: "text", text: JSON.stringify(response) }],
-				}
-			},
-		)
-
-		// Reply to thread tool
-		server.tool(
-			"slack_reply_to_thread",
-			"Reply to a specific message thread in Slack",
-			{
-				channel_id: z
-					.string()
-					.describe("The ID of the channel containing the thread"),
 				thread_ts: z
 					.string()
+					.optional()
 					.describe(
-						"The timestamp of the parent message in the format '1234567890.123456'. Timestamps in the format without the period can be converted by adding the period such that 6 numbers come after it.",
+						"Optional. The timestamp of the parent message to reply to in the format '1234567890.123456'. When provided, the message will be posted as a reply to the thread.",
 					),
-				text: z.string().describe("The reply text"),
 			},
-			async ({ channel_id, thread_ts, text }) => {
+			async ({ channel_id, text, thread_ts }) => {
 				const response = await slackClient.chat.postMessage({
 					channel: channel_id,
-					thread_ts,
 					text,
+					...(thread_ts && { thread_ts }),
+					mrkdwn: true,
 				})
 				return {
 					content: [{ type: "text", text: JSON.stringify(response) }],
