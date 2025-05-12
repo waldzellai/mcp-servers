@@ -8,7 +8,6 @@ import { registerRepositoryTools } from "./tools/repositories.js"
 import { registerPullRequestTools } from "./tools/pullrequests.js"
 
 // Create stateless server with GitHub token configuration
-// commit to test webhook
 const { app } = createStatelessServer<{
   token: string
 }>(({ config }) => {
