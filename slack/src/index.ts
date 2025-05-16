@@ -175,7 +175,8 @@ const { app } = createStatefulServer<{
 			async ({ channel_id, text, thread_ts }) => {
 				const response = await slackClient.chat.postMessage({
 					channel: channel_id,
-					text,
+					// @ts-ignore
+					blocks: [{ type: "markdown", text }],
 					...(thread_ts && { thread_ts }),
 					mrkdwn: true,
 				})
