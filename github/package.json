@@ -5,9 +5,7 @@
 	"license": "MIT",
 	"author": "Smithery",
 	"type": "module",
-	"files": [
-		"dist"
-	],
+	"files": ["dist"],
 	"scripts": {
 		"build": "tsc",
 		"postbuild": "shx test -e dist/*.js && shx chmod +x dist/*.js || true",
