@@ -293,12 +293,15 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 	// Tool: Get File Contents
 	server.tool(
 		"get_file_contents",
-		"Get the contents of a file or directory from a GitHub repository",
+		"Get the contents of a file from a GitHub repository",
 		{
 			owner: z.string().describe("Repository owner (username or organization)"),
 			repo: z.string().describe("Repository name"),
-			path: z.string().describe("Path to file/directory"),
-			branch: z.string().optional().describe("Branch to get contents from"),
+			path: z.string().describe("Path to file"),
+			branch: z
+				.string()
+				.optional()
+				.describe("Branch to get contents from (defaults to default branch)"),
 		},
 		async ({ owner, repo, path, branch }) => {
 			try {
@@ -309,16 +312,183 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 					ref: branch,
 				})
 
-				// If it's a file, decode the content
-				if (!Array.isArray(response.data) && response.data.type === "file") {
-					const content = Buffer.from(response.data.content, "base64").toString(
-						"utf-8",
-					)
-					response.data.content = content
+				// Handle only files
+				if (Array.isArray(response.data)) {
+					return {
+						content: [
+							{
+								type: "text",
+								text: "Error: Path points to a directory, not a file. Use get_repository_tree to list directory contents.",
+							},
+						],
+					}
 				}
 
+				if (response.data.type !== "file") {
+					return {
+						content: [
+							{
+								type: "text",
+								text: `Error: Path points to a ${response.data.type}, not a file.`,
+							},
+						],
+					}
+				}
+
+				// Decode the file content
+				const content = Buffer.from(response.data.content, "base64").toString(
+					"utf-8",
+				)
+
+				// Token-efficient format
+				const ext = path.split(".").pop() || ""
+				const output = `${response.data.path} (${response.data.size}B)\n\n\`\`\`${ext}\n${content}\n\`\`\``
+
 				return {
-					content: [{ type: "text", text: JSON.stringify(response.data) }],
+					content: [{ type: "text", text: output }],
+				}
+			} catch (e: any) {
+				return {
+					content: [{ type: "text", text: `Error: ${e.message}` }],
+				}
+			}
+		},
+	)
+
+	// Tool: Get Repository Tree
+	server.tool(
+		"get_repository_tree",
+		"Get the file structure (tree) of a GitHub repository or a specific directory",
+		{
+			owner: z.string().describe("Repository owner (username or organization)"),
+			repo: z.string().describe("Repository name"),
+			path: z
+				.string()
+				.optional()
+				.describe("Path to a specific directory (optional, defaults to root)"),
+			branch: z
+				.string()
+				.optional()
+				.describe("Branch to get tree from (defaults to default branch)"),
+			recursive: z
+				.boolean()
+				.optional()
+				.default(false)
+				.describe(
+					"Whether to get the tree recursively (includes all subdirectories)",
+				),
+		},
+		async ({ owner, repo, path, branch, recursive }) => {
+			try {
+				// If path is provided, use getContent to get directory listing
+				if (path) {
+					const response = await octokit.rest.repos.getContent({
+						owner,
+						repo,
+						path,
+						ref: branch,
+					})
+
+					// Must be a directory
+					if (!Array.isArray(response.data)) {
+						return {
+							content: [
+								{
+									type: "text",
+									text: "Error: Path does not point to a directory",
+								},
+							],
+						}
+					}
+
+					// Format directory contents
+					const items = response.data.map((item) => ({
+						name: item.name,
+						path: item.path,
+						type: item.type,
+						size: item.size || 0,
+						sha: item.sha,
+					}))
+
+					// Token-efficient format
+					let output = `${path}/\n`
+					items
+						.sort((a, b) => {
+							if (a.type === b.type) return a.name.localeCompare(b.name)
+							return a.type === "dir" ? -1 : 1
+						})
+						.forEach((item) => {
+							if (item.type === "dir") {
+								output += `  ${item.name}/\n`
+							} else {
+								output += `  ${item.name} (${item.size}B)\n`
+							}
+						})
+
+					return {
+						content: [{ type: "text", text: output }],
+					}
+				}
+
+				// For root or recursive listing, use the git tree API
+				// First get the default branch if not specified
+				let targetBranch = branch
+				if (!targetBranch) {
+					const repoData = await octokit.rest.repos.get({ owner, repo })
+					targetBranch = repoData.data.default_branch
+				}
+
+				// Get the tree SHA for the branch
+				const refData = await octokit.rest.git.getRef({
+					owner,
+					repo,
+					ref: `heads/${targetBranch}`,
+				})
+
+				const commitSha = refData.data.object.sha
+				const commitData = await octokit.rest.git.getCommit({
+					owner,
+					repo,
+					commit_sha: commitSha,
+				})
+
+				// Get the tree
+				const treeData = await octokit.rest.git.getTree({
+					owner,
+					repo,
+					tree_sha: commitData.data.tree.sha,
+					recursive: recursive ? "true" : undefined,
+				})
+
+				// Format the tree data
+				const items = treeData.data.tree.map((item) => ({
+					path: item.path,
+					type: item.type === "blob" ? "file" : item.type,
+					size: item.size || 0,
+					sha: item.sha,
+				}))
+
+				// Token-efficient format with simple indentation
+				let output = `${owner}/${repo} @ ${targetBranch}\n`
+				if (treeData.data.truncated) {
+					output += `(truncated)\n`
+				}
+
+				// Sort by path for consistent output
+				items.sort((a, b) => a.path.localeCompare(b.path))
+
+				items.forEach((item) => {
+					const indent = "  ".repeat(item.path.split("/").length - 1)
+					const name = item.path.split("/").pop()
+					if (item.type === "file") {
+						output += `${indent}${name} (${item.size}B)\n`
+					} else {
+						output += `${indent}${name} (${item.type})\n`
+					}
+				})
+
+				return {
+					content: [{ type: "text", text: output }],
 				}
 			} catch (e: any) {
 				return {
