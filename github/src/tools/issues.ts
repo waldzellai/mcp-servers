@@ -87,8 +87,8 @@ export function registerIssueTools(server: McpServer, octokit: Octokit) {
 			per_page: z
 				.number()
 				.optional()
-				.default(30)
-				.describe("Results per page (default 30, max 100)"),
+				.default(10)
+				.describe("Results per page (default 10, max 100)"),
 			page: z
 				.number()
 				.optional()
@@ -104,8 +104,47 @@ export function registerIssueTools(server: McpServer, octokit: Octokit) {
 					per_page,
 					page,
 				})
+
+				// Format the response as clean markdown
+				const items = response.data.items
+				const totalCount = response.data.total_count
+
+				if (items.length === 0) {
+					return {
+						content: [
+							{ type: "text", text: "No issues found matching your search." },
+						],
+					}
+				}
+
+				let markdown = `# Search Results\n\n`
+				markdown += `Found ${totalCount} total result(s), showing ${items.length}\n\n`
+				markdown += `**Query**: ${q}\n\n`
+
+				items.forEach((item) => {
+					const type = item.pull_request ? "PR" : "Issue"
+					markdown += `## ${type} #${item.number}: ${item.title}\n\n`
+					markdown += `- **Repository**: ${item.repository_url.split("/").slice(-2).join("/")}\n`
+					markdown += `- **State**: ${item.state}\n`
+					markdown += `- **Author**: ${item.user?.login || "Unknown"}\n`
+					markdown += `- **Created**: ${new Date(item.created_at).toLocaleDateString()}\n`
+					markdown += `- **Updated**: ${new Date(item.updated_at).toLocaleDateString()}\n`
+
+					if (item.labels && item.labels.length > 0) {
+						markdown += `- **Labels**: ${item.labels.map((l) => l.name).join(", ")}\n`
+					}
+
+					if (item.assignees && item.assignees.length > 0) {
+						markdown += `- **Assignees**: ${item.assignees.map((a) => a.login).join(", ")}\n`
+					}
+
+					markdown += `- **Comments**: ${item.comments}\n`
+					markdown += `- **URL**: ${item.html_url}\n`
+					markdown += `\n`
+				})
+
 				return {
-					content: [{ type: "text", text: JSON.stringify(response.data) }],
+					content: [{ type: "text", text: markdown }],
 				}
 			} catch (e: any) {
 				return {
@@ -180,8 +219,8 @@ export function registerIssueTools(server: McpServer, octokit: Octokit) {
 			per_page: z
 				.number()
 				.optional()
-				.default(30)
-				.describe("Results per page (default 30, max 100)"),
+				.default(10)
+				.describe("Results per page (default 10, max 100)"),
 			page: z
 				.number()
 				.optional()
@@ -211,8 +250,49 @@ export function registerIssueTools(server: McpServer, octokit: Octokit) {
 					per_page,
 					page,
 				})
+
+				// Format the response as clean markdown
+				const issues = response.data.filter((item) => !item.pull_request) // Filter out PRs
+
+				if (issues.length === 0) {
+					return {
+						content: [{ type: "text", text: "No issues found." }],
+					}
+				}
+
+				let markdown = `# Issues for ${owner}/${repo}\n\n`
+				markdown += `Showing ${issues.length} issue(s) - Page ${page}\n`
+				if (response.data.length === per_page) {
+					markdown += `*Note: More results may be available. Use 'page' parameter to see next page.*\n`
+				}
+				markdown += `\n`
+
+				issues.forEach((issue) => {
+					markdown += `## #${issue.number}: ${issue.title}\n\n`
+					markdown += `- **State**: ${issue.state}\n`
+					markdown += `- **Author**: ${issue.user?.login || "Unknown"}\n`
+					markdown += `- **Created**: ${new Date(issue.created_at).toLocaleDateString()}\n`
+					markdown += `- **Updated**: ${new Date(issue.updated_at).toLocaleDateString()}\n`
+
+					if (issue.labels && issue.labels.length > 0) {
+						markdown += `- **Labels**: ${issue.labels.map((l) => (typeof l === "string" ? l : l.name)).join(", ")}\n`
+					}
+
+					if (issue.assignees && issue.assignees.length > 0) {
+						markdown += `- **Assignees**: ${issue.assignees.map((a) => a.login).join(", ")}\n`
+					}
+
+					if (issue.milestone) {
+						markdown += `- **Milestone**: ${issue.milestone.title}\n`
+					}
+
+					markdown += `- **Comments**: ${issue.comments}\n`
+					markdown += `- **URL**: ${issue.html_url}\n`
+					markdown += `\n`
+				})
+
 				return {
-					content: [{ type: "text", text: JSON.stringify(response.data) }],
+					content: [{ type: "text", text: markdown }],
 				}
 			} catch (e: any) {
 				return {
@@ -283,7 +363,7 @@ export function registerIssueTools(server: McpServer, octokit: Octokit) {
 			per_page: z
 				.number()
 				.optional()
-				.default(30)
+				.default(10)
 				.describe("Number of records per page"),
 		},
 		async ({ owner, repo, issue_number, page, per_page }) => {
@@ -295,8 +375,36 @@ export function registerIssueTools(server: McpServer, octokit: Octokit) {
 					page,
 					per_page,
 				})
+
+				// Format the response as clean markdown
+				const comments = response.data
+
+				if (comments.length === 0) {
+					return {
+						content: [
+							{ type: "text", text: "No comments found for this issue." },
+						],
+					}
+				}
+
+				let markdown = `# Comments for Issue #${issue_number}\n\n`
+				markdown += `Showing ${comments.length} comment(s) - Page ${page}\n`
+				if (comments.length === per_page) {
+					markdown += `*Note: More comments may be available. Use 'page' parameter to see next page.*\n`
+				}
+				markdown += `\n`
+
+				comments.forEach((comment, index) => {
+					markdown += `## Comment ${index + 1}\n\n`
+					markdown += `- **Author**: ${comment.user?.login || "Unknown"}\n`
+					markdown += `- **Created**: ${new Date(comment.created_at).toLocaleDateString()}\n`
+					markdown += `- **Updated**: ${new Date(comment.updated_at).toLocaleDateString()}\n\n`
+					markdown += `**Content**:\n${comment.body}\n\n`
+					markdown += `---\n\n`
+				})
+
 				return {
-					content: [{ type: "text", text: JSON.stringify(response.data) }],
+					content: [{ type: "text", text: markdown }],
 				}
 			} catch (e: any) {
 				return {

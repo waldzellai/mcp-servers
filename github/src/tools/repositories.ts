@@ -6,103 +6,107 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 	// Tool: Get Repository Details
 	server.tool(
 		"get_repository",
-		"Get detailed information about a GitHub repository",
+		"Get detailed information about a GitHub repository including README and file structure",
 		{
 			owner: z.string().describe("Repository owner"),
 			repo: z.string().describe("Repository name"),
 		},
 		async ({ owner, repo }) => {
 			try {
-				const response = await octokit.rest.repos.get({
+				// Get basic repository info
+				const repoResponse = await octokit.rest.repos.get({
 					owner,
 					repo,
 				})
+				const repoData = repoResponse.data
 
-				// Extract comprehensive repository information
-				const repoData = response.data
-
-				// Format timestamps
-				const formatDate = (dateStr: string) => {
-					return new Date(dateStr).toLocaleDateString("en-US", {
-						year: "numeric",
-						month: "short",
-						day: "numeric",
-					})
-				}
-
-				// Build Markdown output
+				// Start building markdown
 				let markdown = `# ${repoData.full_name}\n\n`
 
-				// Description
+				// Add description if available
 				if (repoData.description) {
 					markdown += `> ${repoData.description}\n\n`
 				}
 
-				// Basic Info
-				markdown += `## Stats\n`
-				markdown += `- **Stars:** ${repoData.stargazers_count.toLocaleString()}\n`
-				markdown += `- **Forks:** ${repoData.forks_count.toLocaleString()}\n`
-				markdown += `- **Open Issues:** ${repoData.open_issues_count.toLocaleString()}\n`
-				markdown += `- **Watchers:** ${repoData.watchers_count.toLocaleString()}\n`
-				markdown += `- **Size:** ${(repoData.size / 1024).toFixed(2)} MB\n\n`
+				// Add basic stats in a single line
+				markdown += `**Language:** ${repoData.language || "Not specified"} | `
+				markdown += `**Stars:** ${repoData.stargazers_count} | `
+				markdown += `**Forks:** ${repoData.forks_count} | `
+				markdown += `**License:** ${repoData.license?.spdx_id || "None"}\n\n`
 
-				// Repository Info
-				markdown += `## Details\n`
-				markdown += `- **Primary Language:** ${repoData.language || "None"}\n`
-				markdown += `- **Default Branch:** \`${repoData.default_branch}\`\n`
-				markdown += `- **License:** ${repoData.license?.name || "No license"}\n`
-				markdown += `- **Visibility:** ${repoData.visibility}\n`
+				// Get README content
+				try {
+					const readmeResponse = await octokit.rest.repos.getReadme({
+						owner,
+						repo,
+					})
 
-				// Topics
-				if (repoData.topics && repoData.topics.length > 0) {
-					markdown += `- **Topics:** ${repoData.topics.map((t: string) => `\`${t}\``).join(", ")}\n`
+					// Decode README content from base64
+					const readmeContent = Buffer.from(
+						readmeResponse.data.content,
+						"base64",
+					).toString("utf-8")
+
+					markdown += `## README\n\n`
+					markdown += readmeContent
+					markdown += `\n\n`
+				} catch (readmeError) {
+					markdown += `## README\n\n`
+					markdown += `*No README file found*\n\n`
 				}
 
-				// Status flags
-				const flags = []
-				if (repoData.private) flags.push("Private")
-				if (repoData.fork) flags.push("Fork")
-				if (repoData.archived) flags.push("Archived")
-				if (repoData.disabled) flags.push("Disabled")
-				if (flags.length > 0) {
-					markdown += `- **Status:** ${flags.join(", ")}\n`
-				}
-				markdown += "\n"
+				// Get repository file structure (root directory)
+				try {
+					const contentsResponse = await octokit.rest.repos.getContent({
+						owner,
+						repo,
+						path: "",
+					})
 
-				// URLs
-				markdown += `## Links\n`
-				markdown += `- **Repository:** ${repoData.html_url}\n`
-				markdown += `- **Clone:** \`${repoData.clone_url}\`\n`
-				markdown += `- **SSH:** \`${repoData.ssh_url}\`\n`
+					if (Array.isArray(contentsResponse.data)) {
+						markdown += `## Repository Structure\n\n`
+
+						// Sort contents: directories first, then files
+						const contents = contentsResponse.data.sort((a, b) => {
+							if (a.type === b.type) return a.name.localeCompare(b.name)
+							return a.type === "dir" ? -1 : 1
+						})
+
+						// Group by type
+						const dirs = contents.filter((item) => item.type === "dir")
+						const files = contents.filter((item) => item.type === "file")
+
+						if (dirs.length > 0) {
+							markdown += `### Directories\n`
+							dirs.forEach((dir) => {
+								markdown += `- **${dir.name}/**\n`
+							})
+							markdown += `\n`
+						}
+
+						if (files.length > 0) {
+							markdown += `### Files\n`
+							files.forEach((file) => {
+								const size = file.size
+									? ` (${(file.size / 1024).toFixed(1)} KB)`
+									: ""
+								markdown += `- ${file.name}${size}\n`
+							})
+							markdown += `\n`
+						}
+					}
+				} catch (contentsError) {
+					markdown += `## Repository Structure\n\n`
+					markdown += `*Unable to fetch repository contents*\n\n`
+				}
+
+				// Add essential links at the bottom
+				markdown += `## Links\n\n`
+				markdown += `- **GitHub:** ${repoData.html_url}\n`
+				markdown += `- **Clone:** \`git clone ${repoData.clone_url}\`\n`
 				if (repoData.homepage) {
-					markdown += `- **Homepage:** ${repoData.homepage}\n`
+					markdown += `- **Website:** ${repoData.homepage}\n`
 				}
-				markdown += "\n"
-
-				// Features
-				const features = []
-				if (repoData.has_issues) features.push("Issues")
-				if (repoData.has_projects) features.push("Projects")
-				if (repoData.has_wiki) features.push("Wiki")
-				if (repoData.has_pages) features.push("Pages")
-				if (repoData.has_downloads) features.push("Downloads")
-				if (repoData.has_discussions) features.push("Discussions")
-
-				if (features.length > 0) {
-					markdown += `## Features\n`
-					markdown += `Enabled: ${features.join(", ")}\n\n`
-				}
-
-				// Owner
-				markdown += `## Owner\n`
-				markdown += `- **Name:** [${repoData.owner.login}](https://github.com/${repoData.owner.login})\n`
-				markdown += `- **Type:** ${repoData.owner.type}\n\n`
-
-				// Timestamps
-				markdown += `## Timeline\n`
-				markdown += `- **Created:** ${formatDate(repoData.created_at)}\n`
-				markdown += `- **Last Updated:** ${formatDate(repoData.updated_at)}\n`
-				markdown += `- **Last Push:** ${formatDate(repoData.pushed_at)}\n`
 
 				return {
 					content: [{ type: "text", text: markdown }],
@@ -131,8 +135,47 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 					repo,
 					ref: sha,
 				})
+
+				const commit = response.data
+
+				// Format as clean markdown
+				let markdown = `# Commit ${commit.sha.substring(0, 7)}\n\n`
+				markdown += `**Message:** ${commit.commit.message}\n\n`
+				markdown += `**Author:** ${commit.commit.author?.name} <${commit.commit.author?.email}>\n`
+				markdown += `**Date:** ${new Date(commit.commit.author?.date || "").toLocaleDateString()}\n`
+
+				if (commit.commit.committer?.name !== commit.commit.author?.name) {
+					markdown += `**Committer:** ${commit.commit.committer?.name} <${commit.commit.committer?.email}>\n`
+				}
+
+				markdown += `\n## Changes\n\n`
+				markdown += `- **Files changed:** ${commit.files?.length || 0}\n`
+				markdown += `- **Additions:** ${commit.stats?.additions || 0}\n`
+				markdown += `- **Deletions:** ${commit.stats?.deletions || 0}\n`
+
+				if (commit.files && commit.files.length > 0) {
+					markdown += `\n## Files\n\n`
+					commit.files.forEach((file) => {
+						const status =
+							file.status === "added"
+								? "[A]"
+								: file.status === "removed"
+									? "[D]"
+									: file.status === "modified"
+										? "[M]"
+										: file.status === "renamed"
+											? "[R]"
+											: "[?]"
+						markdown += `- ${status} ${file.filename} (+${file.additions} -${file.deletions})\n`
+					})
+				}
+
+				markdown += `\n## Links\n\n`
+				markdown += `- **Commit URL:** ${commit.html_url}\n`
+				markdown += `- **Full SHA:** ${commit.sha}\n`
+
 				return {
-					content: [{ type: "text", text: JSON.stringify(response.data) }],
+					content: [{ type: "text", text: markdown }],
 				}
 			} catch (e: any) {
 				return {
@@ -153,8 +196,8 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 			per_page: z
 				.number()
 				.optional()
-				.default(30)
-				.describe("Results per page (default 30, max 100)"),
+				.default(10)
+				.describe("Results per page (default 10, max 100)"),
 			page: z
 				.number()
 				.optional()
@@ -170,8 +213,50 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 					per_page,
 					page,
 				})
+
+				const commits = response.data
+
+				if (commits.length === 0) {
+					return {
+						content: [{ type: "text", text: "No commits found." }],
+					}
+				}
+
+				// Format as clean markdown
+				let markdown = `# Commits for ${owner}/${repo}`
+				if (sha) {
+					markdown += ` (${sha})`
+				}
+				markdown += `\n\n`
+				markdown += `Showing ${commits.length} commit(s) - Page ${page}\n`
+				if (commits.length === per_page) {
+					markdown += `*Note: More commits may be available. Use 'page' parameter to see next page.*\n`
+				}
+				markdown += `\n`
+
+				commits.forEach((commit) => {
+					const shortSha = commit.sha.substring(0, 7)
+					const message = commit.commit.message.split("\n")[0] // First line only
+					const author =
+						commit.commit.author?.name || commit.author?.login || "Unknown"
+					const date = new Date(
+						commit.commit.author?.date || "",
+					).toLocaleDateString()
+
+					markdown += `## ${shortSha}: ${message}\n\n`
+					markdown += `- **Author:** ${author}\n`
+					markdown += `- **Date:** ${date}\n`
+
+					if (commit.commit.comment_count > 0) {
+						markdown += `- **Comments:** ${commit.commit.comment_count}\n`
+					}
+
+					markdown += `- **URL:** ${commit.html_url}\n`
+					markdown += `\n`
+				})
+
 				return {
-					content: [{ type: "text", text: JSON.stringify(response.data) }],
+					content: [{ type: "text", text: markdown }],
 				}
 			} catch (e: any) {
 				return {
@@ -191,8 +276,8 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 			per_page: z
 				.number()
 				.optional()
-				.default(30)
-				.describe("Results per page (default 30, max 100)"),
+				.default(10)
+				.describe("Results per page (default 10, max 100)"),
 			page: z
 				.number()
 				.optional()
@@ -207,8 +292,42 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 					per_page,
 					page,
 				})
+
+				const branches = response.data
+
+				if (branches.length === 0) {
+					return {
+						content: [{ type: "text", text: "No branches found." }],
+					}
+				}
+
+				// Get default branch
+				const repoResponse = await octokit.rest.repos.get({ owner, repo })
+				const defaultBranch = repoResponse.data.default_branch
+
+				// Format as clean markdown
+				let markdown = `# Branches for ${owner}/${repo}\n\n`
+				markdown += `Showing ${branches.length} branch(es) - Page ${page}\n`
+				if (branches.length === per_page) {
+					markdown += `*Note: More branches may be available. Use 'page' parameter to see next page.*\n`
+				}
+				markdown += `\n`
+
+				branches.forEach((branch) => {
+					const isDefault = branch.name === defaultBranch
+					markdown += `## ${branch.name}${isDefault ? " (default)" : ""}\n\n`
+					markdown += `- **SHA:** ${branch.commit.sha.substring(0, 7)}\n`
+
+					if (branch.protected) {
+						markdown += `- **Protected:** Yes\n`
+					}
+
+					markdown += `- **URL:** ${branch.commit.url.replace("api.github.com/repos", "github.com").replace("/commits/", "/tree/")}\n`
+					markdown += `\n`
+				})
+
 				return {
-					content: [{ type: "text", text: JSON.stringify(response.data) }],
+					content: [{ type: "text", text: markdown }],
 				}
 			} catch (e: any) {
 				return {
@@ -302,8 +421,15 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 				.string()
 				.optional()
 				.describe("Branch to get contents from (defaults to default branch)"),
+			mode: z
+				.enum(["overview", "full"])
+				.optional()
+				.default("overview")
+				.describe(
+					"Mode: 'overview' for truncated preview, 'full' for complete file",
+				),
 		},
-		async ({ owner, repo, path, branch }) => {
+		async ({ owner, repo, path, branch, mode }) => {
 			try {
 				const response = await octokit.rest.repos.getContent({
 					owner,
@@ -318,7 +444,7 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 						content: [
 							{
 								type: "text",
-								text: "Error: Path points to a directory, not a file. Use get_repository_tree to list directory contents.",
+								text: "Error: Path points to a directory, not a file.",
 							},
 						],
 					}
@@ -336,159 +462,53 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 				}
 
 				// Decode the file content
-				const content = Buffer.from(response.data.content, "base64").toString(
-					"utf-8",
-				)
+				const fullContent = Buffer.from(
+					response.data.content,
+					"base64",
+				).toString("utf-8")
 
-				// Token-efficient format
+				// Get file extension for syntax highlighting
 				const ext = path.split(".").pop() || ""
-				const output = `${response.data.path} (${response.data.size}B)\n\n\`\`\`${ext}\n${content}\n\`\`\``
+				const fileName = path.split("/").pop() || path
 
-				return {
-					content: [{ type: "text", text: output }],
-				}
-			} catch (e: any) {
-				return {
-					content: [{ type: "text", text: `Error: ${e.message}` }],
-				}
-			}
-		},
-	)
+				// Format as markdown
+				let markdown = `# File: ${fileName}\n\n`
+				markdown += `**Path:** ${response.data.path}\n`
+				markdown += `**Size:** ${(response.data.size / 1024).toFixed(2)} KB (${response.data.size} bytes)\n`
+				markdown += `**SHA:** ${response.data.sha.substring(0, 7)}\n\n`
 
-	// Tool: Get Repository Tree
-	server.tool(
-		"get_repository_tree",
-		"Get the file structure (tree) of a GitHub repository or a specific directory",
-		{
-			owner: z.string().describe("Repository owner (username or organization)"),
-			repo: z.string().describe("Repository name"),
-			path: z
-				.string()
-				.optional()
-				.describe("Path to a specific directory (optional, defaults to root)"),
-			branch: z
-				.string()
-				.optional()
-				.describe("Branch to get tree from (defaults to default branch)"),
-			recursive: z
-				.boolean()
-				.optional()
-				.default(false)
-				.describe(
-					"Whether to get the tree recursively (includes all subdirectories)",
-				),
-		},
-		async ({ owner, repo, path, branch, recursive }) => {
-			try {
-				// If path is provided, use getContent to get directory listing
-				if (path) {
-					const response = await octokit.rest.repos.getContent({
-						owner,
-						repo,
-						path,
-						ref: branch,
-					})
+				if (mode === "overview") {
+					// Truncated overview mode
+					const lines = fullContent.split("\n")
+					const totalLines = lines.length
 
-					// Must be a directory
-					if (!Array.isArray(response.data)) {
-						return {
-							content: [
-								{
-									type: "text",
-									text: "Error: Path does not point to a directory",
-								},
-							],
-						}
+					markdown += `**Lines:** ${totalLines}\n\n`
+					markdown += `## Preview (first 50 lines)\n\n`
+
+					const previewLines = lines.slice(0, 50)
+					const preview = previewLines.join("\n")
+
+					markdown += `\`\`\`${ext}\n${preview}\n`
+
+					if (totalLines > 50) {
+						markdown += `\n... (${totalLines - 50} more lines)\n`
 					}
 
-					// Format directory contents
-					const items = response.data.map((item) => ({
-						name: item.name,
-						path: item.path,
-						type: item.type,
-						size: item.size || 0,
-						sha: item.sha,
-					}))
+					markdown += `\`\`\`\n\n`
 
-					// Token-efficient format
-					let output = `${path}/\n`
-					items
-						.sort((a, b) => {
-							if (a.type === b.type) return a.name.localeCompare(b.name)
-							return a.type === "dir" ? -1 : 1
-						})
-						.forEach((item) => {
-							if (item.type === "dir") {
-								output += `  ${item.name}/\n`
-							} else {
-								output += `  ${item.name} (${item.size}B)\n`
-							}
-						})
-
-					return {
-						content: [{ type: "text", text: output }],
+					if (totalLines > 50) {
+						markdown += `*Showing first 50 lines of ${totalLines} total. Use mode='full' to see complete file.*\n`
 					}
+				} else {
+					// Full content mode
+					const lines = fullContent.split("\n").length
+					markdown += `**Lines:** ${lines}\n\n`
+					markdown += `## Full Content\n\n`
+					markdown += `\`\`\`${ext}\n${fullContent}\n\`\`\``
 				}
-
-				// For root or recursive listing, use the git tree API
-				// First get the default branch if not specified
-				let targetBranch = branch
-				if (!targetBranch) {
-					const repoData = await octokit.rest.repos.get({ owner, repo })
-					targetBranch = repoData.data.default_branch
-				}
-
-				// Get the tree SHA for the branch
-				const refData = await octokit.rest.git.getRef({
-					owner,
-					repo,
-					ref: `heads/${targetBranch}`,
-				})
-
-				const commitSha = refData.data.object.sha
-				const commitData = await octokit.rest.git.getCommit({
-					owner,
-					repo,
-					commit_sha: commitSha,
-				})
-
-				// Get the tree
-				const treeData = await octokit.rest.git.getTree({
-					owner,
-					repo,
-					tree_sha: commitData.data.tree.sha,
-					recursive: recursive ? "true" : undefined,
-				})
-
-				// Format the tree data
-				const items = treeData.data.tree.map((item) => ({
-					path: item.path,
-					type: item.type === "blob" ? "file" : item.type,
-					size: item.size || 0,
-					sha: item.sha,
-				}))
-
-				// Token-efficient format with simple indentation
-				let output = `${owner}/${repo} @ ${targetBranch}\n`
-				if (treeData.data.truncated) {
-					output += `(truncated)\n`
-				}
-
-				// Sort by path for consistent output
-				items.sort((a, b) => a.path.localeCompare(b.path))
-
-				items.forEach((item) => {
-					const indent = "  ".repeat(item.path.split("/").length - 1)
-					const name = item.path.split("/").pop()
-					if (item.type === "file") {
-						output += `${indent}${name} (${item.size}B)\n`
-					} else {
-						output += `${indent}${name} (${item.type})\n`
-					}
-				})
 
 				return {
-					content: [{ type: "text", text: output }],
+					content: [{ type: "text", text: markdown }],
 				}
 			} catch (e: any) {
 				return {
@@ -580,8 +600,8 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 			per_page: z
 				.number()
 				.optional()
-				.default(30)
-				.describe("Results per page (default 30, max 100)"),
+				.default(10)
+				.describe("Results per page (default 10, max 100)"),
 			page: z
 				.number()
 				.optional()
@@ -596,8 +616,37 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 					per_page,
 					page,
 				})
+
+				const tags = response.data
+
+				if (tags.length === 0) {
+					return {
+						content: [{ type: "text", text: "No tags found." }],
+					}
+				}
+
+				// Format as clean markdown
+				let markdown = `# Tags for ${owner}/${repo}\n\n`
+				markdown += `Showing ${tags.length} tag(s) - Page ${page}\n`
+				if (tags.length === per_page) {
+					markdown += `*Note: More tags may be available. Use 'page' parameter to see next page.*\n`
+				}
+				markdown += `\n`
+
+				tags.forEach((tag) => {
+					markdown += `## ${tag.name}\n\n`
+					markdown += `- **SHA:** ${tag.commit.sha.substring(0, 7)}\n`
+					markdown += `- **URL:** ${tag.commit.url.replace("api.github.com/repos", "github.com").replace("/commits/", "/releases/tag/")}\n`
+
+					if (tag.zipball_url) {
+						markdown += `- **Download:** [ZIP](${tag.zipball_url}) | [TAR](${tag.tarball_url})\n`
+					}
+
+					markdown += `\n`
+				})
+
 				return {
-					content: [{ type: "text", text: JSON.stringify(response.data) }],
+					content: [{ type: "text", text: markdown }],
 				}
 			} catch (e: any) {
 				return {
