@@ -6,7 +6,6 @@ import {
 import { SubscribeRequestSchema } from "@modelcontextprotocol/sdk/types.js"
 import blot from "@slack/bolt"
 import { WebClient } from "@slack/web-api"
-import { createStatefulServer } from "@smithery/sdk/server/stateful.js"
 import { z } from "zod"
 
 function setupResources(
@@ -106,12 +105,19 @@ function setupResources(
 	)
 }
 
+
+export const configSchema = z.object({
+	token: z.string(),
+	signingSecret: z.string().optional(),
+	appToken: z.string().optional(),
+})
+
 // Create stateful server with Slack client configuration
-const { app } = createStatefulServer<{
-	token: string
-	signingSecret?: string
-	appToken?: string
-}>(({ config }) => {
+export function createStatefulServer({
+	config,
+}: {
+	config: z.infer<typeof configSchema>
+}) {
 	try {
 		console.log("Starting Slack MCP Server...")
 
@@ -309,10 +315,4 @@ const { app } = createStatefulServer<{
 		console.error(e)
 		throw e
 	}
-})
-
-// Start the server
-const PORT = process.env.PORT || 8081
-app.listen(PORT, () => {
-	console.log(`MCP server running on port ${PORT}`)
-})
+}

@@ -1,3 +1,6 @@
+build:
+  runtime: typescript
+
 startCommand:
   type: http
   configSchema:
