@@ -129,6 +129,17 @@ async function weatherApiRequest(endpoint: string): Promise<unknown> {
 	}
 }
 
+// Helper function to format temperature in both F and C
+function formatTemperature(tempValue: number, currentUnit: 'F' | 'C'): string {
+	if (currentUnit === 'F') {
+		const tempC = ((tempValue - 32) * 5) / 9;
+		return `${tempValue}°F (${tempC.toFixed(1)}°C)`;
+	} else {
+		const tempF = (tempValue * 9) / 5 + 32;
+		return `${tempF.toFixed(1)}°F (${tempValue}°C)`;
+	}
+}
+
 // Helper to parse location input (coordinates, city name, etc.)
 async function parseLocation(
 	location: string,
@@ -219,10 +230,10 @@ const { app } = createStatelessServer<Record<string, never>>(() => {
 					// "Feels like" temperature
 					if (obs.heatIndex && obs.heatIndex.value !== null) {
 						const feelsF = (obs.heatIndex.value * 9) / 5 + 32;
-						markdown += `**Feels Like:** ${feelsF.toFixed(1)}°F (heat index)\n`;
+						markdown += `**Feels Like:** ${feelsF.toFixed(1)}°F (${obs.heatIndex.value.toFixed(1)}°C) (heat index)\n`;
 					} else if (obs.windChill && obs.windChill.value !== null) {
 						const feelsF = (obs.windChill.value * 9) / 5 + 32;
-						markdown += `**Feels Like:** ${feelsF.toFixed(1)}°F (wind chill)\n`;
+						markdown += `**Feels Like:** ${feelsF.toFixed(1)}°F (${obs.windChill.value.toFixed(1)}°C) (wind chill)\n`;
 					}
 
 					// Conditions
@@ -315,7 +326,12 @@ const { app } = createStatelessServer<Record<string, never>>(() => {
 
 					for (const period of periods) {
 						markdown += `## ${period.name}\n\n`;
-						markdown += `**Temperature:** ${period.temperature}°${period.temperatureUnit}\n`;
+						
+						const tempDisplay = formatTemperature(
+							period.temperature, 
+							period.temperatureUnit as 'F' | 'C'
+						);
+						markdown += `**Temperature:** ${tempDisplay}\n`;
 						markdown += `**Conditions:** ${period.shortForecast}\n`;
 
 						if (period.probabilityOfPrecipitation?.value) {
@@ -390,7 +406,12 @@ const { app } = createStatelessServer<Record<string, never>>(() => {
 						});
 						const dateStr = time.toLocaleDateString();
 
-						markdown += `**${timeStr} (${dateStr})** - ${period.temperature}°${period.temperatureUnit} - ${period.shortForecast}`;
+						const tempDisplay = formatTemperature(
+							period.temperature, 
+							period.temperatureUnit as 'F' | 'C'
+						);
+
+						markdown += `**${timeStr} (${dateStr})** - ${tempDisplay} - ${period.shortForecast}`;
 
 						if (period.probabilityOfPrecipitation?.value) {
 							markdown += ` - ${period.probabilityOfPrecipitation.value}% rain`;
