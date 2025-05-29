@@ -1,0 +1,27 @@
+{
+	"name": "@smithery/national-weather-service",
+	"version": "1.0.0",
+	"description": "National Weather Service MCP Server - Get weather information for the United States from api.weather.gov",
+	"type": "module",
+	"main": "dist/index.js",
+	"bin": {
+		"weather-mcp-server": "dist/index.js"
+	},
+	"scripts": {
+		"build": "tsc",
+		"start": "node dist/index.js",
+		"dev": "tsx src/index.ts",
+		"check": "npx @biomejs/biome check --write --unsafe"
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.0.0",
+		"@smithery/sdk": "^1.0.0",
+		"zod": "^3.22.0"
+	},
+	"devDependencies": {
+		"@types/express": "^4.17.0",
+		"@types/node": "^20.0.0",
+		"tsx": "^4.0.0",
+		"typescript": "^5.0.0"
+	}
+}
