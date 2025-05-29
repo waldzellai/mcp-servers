@@ -1,2 +1,1 @@
-build:
-  runtime: typescript
+runtime: typescript
