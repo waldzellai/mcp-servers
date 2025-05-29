@@ -1,21 +1,2 @@
 build:
   runtime: typescript
-
-startCommand:
-  type: http
-  configSchema:
-    type: object
-    required:
-      - token
-    properties:
-      token:
-        type: string
-        description: The Bot User OAuth Token for the Slack app.
-      signingSecret:
-        type: string
-        description: The signing secret for the Slack app.
-      appToken:
-        type: string
-        description: The app token for the Slack app.
-  exampleConfig:
-    token: xoxb-1234567890-1234567890-1234567890
