@@ -1,16 +1,17 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
-import { createStatelessServer } from "@smithery/sdk/server/stateless.js"
 import { Octokit } from "octokit"
-import { registerSearchTools } from "./tools/search.js"
+import { z } from "zod"
 import { registerIssueTools } from "./tools/issues.js"
-import { registerRepositoryTools } from "./tools/repositories.js"
 import { registerPullRequestTools } from "./tools/pullrequests.js"
+import { registerRepositoryTools } from "./tools/repositories.js"
+import { registerSearchTools } from "./tools/search.js"
 
-// Create stateless server with GitHub personal token configuration
-const { app } = createStatelessServer<{
-	githubPersonalAccessToken: string
-}>(({ config }) => {
+export const configSchema = z.object({
+	githubPersonalAccessToken: z.string(),
+})
+
+export function createStatelessServer(config: z.infer<typeof configSchema>) {
 	try {
 		console.log("Starting GitHub MCP Server...")
 
@@ -34,10 +35,4 @@ const { app } = createStatelessServer<{
 		console.error(e)
 		throw e
 	}
-})
-
-// Start the server
-const PORT = process.env.PORT || 8081
-app.listen(PORT, () => {
-	console.log(`MCP server running on port ${PORT}`)
-})
+}
