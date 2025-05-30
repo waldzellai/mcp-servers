@@ -1,12 +1,1 @@
-startCommand:
-  type: http
-  configSchema:
-    type: object
-    required:
-      - githubPersonalAccessToken
-    properties:
-      githubPersonalAccessToken:
-        type: string
-        description: The personal access token for accessing the GitHub API.
-  exampleConfig:
-    githubPersonalAccessToken: xoxb-1234567890-1234567890-1234567890
+runtime: typescript
