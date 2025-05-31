@@ -327,7 +327,7 @@ export function registerBlockTools(server: McpServer, notion: Client) {
 	// Tool: Get Block
 	server.tool(
 		"get-block",
-		"Retrieve a specific block by its ID. In Notion, everything is a block - pages are special blocks that contain other blocks (paragraphs, headings, lists, etc.). Use this to get a specific block's content.",
+		"Retrieve a specific block by its ID. In Notion, everything is a block - pages are special blocks that contain other blocks (paragraphs, headings, lists, etc.). Use this to get a specific block's content. Note: If a block has 'has_children: true' (like toggleable headings), you must call get-block-children separately to fetch its nested content.",
 		{
 			blockId: z.string().describe("ID of the block to retrieve"),
 		},
@@ -349,12 +349,12 @@ export function registerBlockTools(server: McpServer, notion: Client) {
 	// Tool: Get Block Children
 	server.tool(
 		"get-block-children",
-		"Retrieve all child blocks within a page or block. In Notion, everything is a block - pages are special blocks that contain other blocks (paragraphs, headings, lists, etc.). Use this to get all content within a page by passing the page ID, or get nested content within a specific block.",
+		"Retrieve all child blocks within a page or block. In Notion, everything is a block - pages are special blocks that contain other blocks (paragraphs, headings, lists, etc.). Use this to: 1) Get all content within a page by passing the page ID, 2) Get nested content within any block that has 'has_children: true' (including toggleable headings, toggle blocks, etc.). IMPORTANT: Toggleable/collapsible content requires this separate call to fetch.",
 		{
 			blockId: z
 				.string()
 				.describe(
-					"The page ID or parent block ID. Pass a page ID to get all blocks (content) within that page.",
+					"The page ID or parent block ID. Pass a page ID to get all blocks (content) within that page, or a block ID to get nested content (e.g., content under a toggleable heading).",
 				),
 			startCursor: z.string().optional().describe("Cursor for pagination"),
 			pageSize: z

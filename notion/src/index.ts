@@ -9,7 +9,11 @@ import { registerPageTools } from "./tools/pages.js"
 import { registerSearchTools } from "./tools/search.js"
 
 export const configSchema = z.object({
-	notionApiKey: z.string(),
+	notionApiKey: z
+		.string()
+		.describe(
+			"Notion API key, obtained from https://www.notion.so/profile/integrations/",
+		),
 })
 
 export function createStatelessServer({
