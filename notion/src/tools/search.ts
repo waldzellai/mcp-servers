@@ -16,15 +16,31 @@ type SearchResult =
 	| PartialDatabaseObjectResponse
 
 function extractTitle(item: SearchResult): string {
-	if ("title" in item && item.title && Array.isArray(item.title)) {
-		return item.title.map((t) => t.plain_text).join("") || "Untitled"
+	// For databases, title is at root level
+	if (
+		item.object === "database" &&
+		"title" in item &&
+		Array.isArray(item.title)
+	) {
+		const titleText = item.title.map((t) => t.plain_text).join("")
+		if (titleText) return titleText
 	}
-	if ("properties" in item && item.properties && "title" in item.properties) {
-		const titleProp = item.properties.title
-		if (titleProp && "title" in titleProp && Array.isArray(titleProp.title)) {
-			return titleProp.title.map((t) => t.plain_text).join("") || "Untitled"
+
+	// For pages, look for title property
+	if (item.object === "page" && "properties" in item && item.properties) {
+		// Find the first property of type "title"
+		for (const prop of Object.values(item.properties)) {
+			if (
+				prop.type === "title" &&
+				"title" in prop &&
+				Array.isArray(prop.title)
+			) {
+				const titleText = prop.title.map((t) => t.plain_text).join("")
+				if (titleText) return titleText
+			}
 		}
 	}
+
 	return "Untitled"
 }
 

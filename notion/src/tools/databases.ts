@@ -5,6 +5,7 @@ import type {
 	CreateDatabaseResponse,
 	DatabaseObjectResponse,
 	PageObjectResponse,
+	PartialDatabaseObjectResponse,
 	UpdateDatabaseResponse,
 } from "@notionhq/client/build/src/api-endpoints.js"
 import { z } from "zod"
@@ -39,24 +40,19 @@ export function registerDatabaseTools(server: McpServer, notion: Client) {
 				const databases = response.results
 					.filter((item) => item.object === "database")
 					.map((db) => {
-						if (isFullDatabase(db)) {
-							// Find the title property
-							let title = "Untitled"
-							for (const prop of Object.values(db.properties)) {
-								if (
-									prop.type === "title" &&
-									"title" in prop &&
-									Array.isArray(prop.title) &&
-									prop.title.length > 0
-								) {
-									const firstItem = prop.title[0]
-									if (firstItem && "plain_text" in firstItem) {
-										title = firstItem.plain_text || "Untitled"
-										break
-									}
-								}
-							}
+						// Try to extract title regardless of full/partial response
+						let title = "Untitled"
+						if (
+							"title" in db &&
+							Array.isArray((db as any).title) &&
+							(db as any).title.length > 0
+						) {
+							title =
+								(db as any).title.map((t: any) => t.plain_text).join("") ||
+								"Untitled"
+						}
 
+						if (isFullDatabase(db)) {
 							return {
 								id: db.id,
 								title,
@@ -66,10 +62,11 @@ export function registerDatabaseTools(server: McpServer, notion: Client) {
 								properties: Object.keys(db.properties).length,
 							}
 						}
+
 						// Partial database response
 						return {
 							id: db.id,
-							title: "Untitled",
+							title,
 							properties: 0,
 						}
 					})
