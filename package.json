@@ -1,0 +1,31 @@
+{
+	"name": "@smithery/mcp-servers",
+	"version": "1.0.0",
+	"description": "Collection of MCP servers built by Smithery",
+	"private": true,
+	"type": "module",
+	"workspaces": [
+		"github",
+		"national-weather-service",
+		"notion",
+		"slack"
+	],
+	"scripts": {
+		"build": "npm run build --workspaces",
+		"dev": "npm run dev --workspaces",
+		"check": "npx @biomejs/biome check --write --unsafe .",
+		"check:ci": "npx @biomejs/biome check .",
+		"prepare": "npm run build"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"@smithery/cli": "^1.2.4",
+		"@types/node": "^22",
+		"shx": "^0.3.4",
+		"tsx": "^4.19.4",
+		"typescript": "^5.6.2"
+	},
+	"engines": {
+		"node": ">=18"
+	}
+}

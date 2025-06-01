@@ -16,9 +16,7 @@ export const configSchema = z.object({
 		),
 })
 
-export function createStatelessServer({
-	config,
-}: { config: z.infer<typeof configSchema> }) {
+export default function ({ config }: { config: z.infer<typeof configSchema> }) {
 	try {
 		const server = new McpServer({
 			name: "Notion",

@@ -113,7 +113,7 @@ export const configSchema = z.object({
 })
 
 // Create stateful server with Slack client configuration
-export function createStatefulServer({
+export default function ({
 	config,
 }: {
 	config: z.infer<typeof configSchema>

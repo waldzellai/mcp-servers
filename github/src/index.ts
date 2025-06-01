@@ -11,7 +11,7 @@ export const configSchema = z.object({
 	githubPersonalAccessToken: z.string(),
 })
 
-export function createStatelessServer(config: z.infer<typeof configSchema>) {
+export default function ({ config }: { config: z.infer<typeof configSchema> }) {
 	try {
 		console.log("Starting GitHub MCP Server...")
 
