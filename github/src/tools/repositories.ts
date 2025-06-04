@@ -340,7 +340,7 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 	// Tool: Create or Update File
 	server.tool(
 		"create_or_update_file",
-		"Create or update a single file in a GitHub repository. If updating, you must provide the SHA of the file you want to update.",
+		"Create or update a single file in a GitHub repository. If updating an existing file, you must provide the current SHA of the file (the full 40-character SHA, not a shortened version).",
 		{
 			owner: z.string().describe("Repository owner (username or organization)"),
 			repo: z.string().describe("Repository name"),
@@ -353,10 +353,22 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 			sha: z
 				.string()
 				.optional()
-				.describe("SHA of file being replaced (for updates)"),
+				.describe("Full SHA of the current file blob (required for updates, must be the complete 40-character SHA)"),
 		},
 		async ({ owner, repo, path, content, message, branch, sha }) => {
 			try {
+				// If SHA is provided, validate it's the full SHA
+				if (sha && sha.length !== 40) {
+					return {
+						content: [
+							{
+								type: "text",
+								text: `Error: SHA must be the full 40-character blob SHA. Provided SHA "${sha}" is only ${sha.length} characters. Use get_file_contents to retrieve the full SHA.`,
+							},
+						],
+					}
+				}
+
 				const response = await octokit.rest.repos.createOrUpdateFileContents({
 					owner,
 					repo,
@@ -366,10 +378,33 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 					branch,
 					sha,
 				})
+
+				// Format response as markdown
+				let markdown = `# File ${response.data.commit.message}\n\n`
+				markdown += `**Path:** ${response.data.content?.path || path}\n`
+				markdown += `**SHA:** ${response.data.content?.sha || 'N/A'}\n`
+				markdown += `**Size:** ${response.data.content?.size || 0} bytes\n\n`
+				markdown += `## Commit Details\n\n`
+				markdown += `- **Commit SHA:** ${response.data.commit.sha}\n`
+				markdown += `- **Author:** ${response.data.commit.author?.name} <${response.data.commit.author?.email}>\n`
+				markdown += `- **Date:** ${response.data.commit.author?.date}\n`
+				markdown += `- **URL:** ${response.data.commit.html_url}\n`
+
 				return {
-					content: [{ type: "text", text: JSON.stringify(response.data) }],
+					content: [{ type: "text", text: markdown }],
 				}
 			} catch (e: any) {
+				// Provide more helpful error messages
+				if (e.message.includes("does not match")) {
+					return {
+						content: [
+							{
+								type: "text",
+								text: `Error: SHA mismatch. The provided SHA does not match the current file's SHA. This usually means the file has been modified since you last retrieved it. Use get_file_contents to get the current SHA, then retry the update.\n\nOriginal error: ${e.message}`,
+							},
+						],
+					}
+				}
 				return {
 					content: [{ type: "text", text: `Error: ${e.message}` }],
 				}
@@ -475,7 +510,7 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 				let markdown = `# File: ${fileName}\n\n`
 				markdown += `**Path:** ${response.data.path}\n`
 				markdown += `**Size:** ${(response.data.size / 1024).toFixed(2)} KB (${response.data.size} bytes)\n`
-				markdown += `**SHA:** ${response.data.sha.substring(0, 7)}\n\n`
+				markdown += `**SHA:** ${response.data.sha.substring(0, 7)} (full: ${response.data.sha})\n\n`
 
 				if (mode === "overview") {
 					// Truncated overview mode
