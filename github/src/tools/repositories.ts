@@ -347,7 +347,7 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 			path: z.string().describe("Path where to create/update the file"),
 			content: z
 				.string()
-				.describe("Content of the file (will be base64-encoded)"),
+				.describe("Content of the file"),
 			message: z.string().describe("Commit message"),
 			branch: z.string().describe("Branch to create/update the file in"),
 			sha: z
