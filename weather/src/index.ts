@@ -246,9 +246,7 @@ function formatTimeAgo(timestamp: string, timezone: string): string {
 }
 
 // Optional: Define configuration schema to require configuration at connection time
-export const configSchema = z.object({
-  debug: z.boolean().default(false).describe("Enable debug logging"),
-});
+export const configSchema = z.object({});
 
 export default function createStatelessServer({
   config,
