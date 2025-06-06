@@ -1,12 +1,13 @@
 {
-	"name": "smithery-scaffold",
+	"name": "@smithery/sequentialthinking",
 	"version": "1.0.0",
-	"description": "",
+	"description": "MCP server to enhance LLMs with sequential thinking",
 	"main": "index.js",
 	"module": "./src/index.ts",
 	"type": "module",
 	"scripts": {
-		"dev": "npx @smithery/cli dev"
+		"build": "npx @smithery/cli build",
+		"dev": "npx @smithery/cli@latest dev"
 	},
 	"keywords": [],
 	"author": "",
@@ -15,9 +16,5 @@
 		"@modelcontextprotocol/sdk": "^1.12.1",
 		"chalk": "^5.4.1",
 		"zod": "^3.25.46"
-	},
-	"devDependencies": {
-		"@smithery/cli": "^1.2.4",
-		"tsx": "^4.19.4"
 	}
 }

@@ -6,9 +6,10 @@
 	"type": "module",
 	"workspaces": [
 		"github",
-		"national-weather-service",
+		"weather",
 		"notion",
-		"slack"
+		"slack",
+		"sequentialthinking"
 	],
 	"scripts": {
 		"build": "npm run build --workspaces",
@@ -19,7 +20,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
-		"@smithery/cli": "^1.2.4",
+		"@smithery/cli": "^1.2.9",
 		"@types/node": "^22",
 		"shx": "^0.3.4",
 		"tsx": "^4.19.4",
