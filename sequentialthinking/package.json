@@ -6,7 +6,7 @@
 	"module": "./src/index.ts",
 	"type": "module",
 	"scripts": {
-		"build": "npx @smithery/cli build",
+		"build": "npx @smithery/cli@latest build",
 		"dev": "npx @smithery/cli@latest dev"
 	},
 	"keywords": [],
