@@ -1,6 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import chalk from 'chalk';
 
 // Optional: Define configuration schema to require configuration at connection time
 export const configSchema = z.object({
