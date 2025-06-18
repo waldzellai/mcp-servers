@@ -1,0 +1,32 @@
+{
+  "repository": {
+    "name": "mcp-servers",
+    "organization": "waldzellai",
+    "category": "waldzell_ai",
+    "stars": 1,
+    "description": "MCP servers developed by Smithery"
+  },
+  "waldzell_integration": {
+    "mcp_optimized": true,
+    "community_focused": true,
+    "enterprise_ready": true,
+    "collective_intelligence": true
+  },
+  "scripts": {
+    "enabled": ,
+    "auto_execution": false,
+    "performance_monitoring": true
+  },
+  "claude_integration": {
+    "api_key_env": "ANTHROPIC_API_KEY",
+    "model": "claude-3-sonnet-20240229",
+    "max_tokens": 4000,
+    "temperature": 0.7
+  },
+  "glassbead_collective": {
+    "enabled": true,
+    "knowledge_sharing": true,
+    "cross_repo_learning": true,
+    "evolution_participation": true
+  }
+}
