@@ -5,7 +5,9 @@
 	"license": "MIT",
 	"author": "Smithery",
 	"type": "module",
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"scripts": {
 		"build": "npx @smithery/cli build",
 		"dev": "npx @smithery/cli dev",

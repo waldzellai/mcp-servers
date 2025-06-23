@@ -19,7 +19,7 @@
 		"prepare": "npm run build"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^1.9.4",
+		"@biomejs/biome": "^2.0.4",
 		"@smithery/cli": "^1.2.9",
 		"@types/node": "^22",
 		"shx": "^0.3.4",

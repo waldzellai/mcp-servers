@@ -51,7 +51,7 @@ export function extractTextFromRichText(
 	if (!richTextArray || !Array.isArray(richTextArray)) return ""
 	return richTextArray
 		.filter(hasPlainText)
-		.map((item) => item.plain_text)
+		.map(item => item.plain_text)
 		.join("")
 }
 
@@ -76,7 +76,7 @@ export function extractPageProperties(
 				properties[key] = prop.select?.name
 				break
 			case "multi_select":
-				properties[key] = prop.multi_select?.map((s) => s.name) || []
+				properties[key] = prop.multi_select?.map(s => s.name) || []
 				break
 			case "date":
 				properties[key] = prop.date?.start

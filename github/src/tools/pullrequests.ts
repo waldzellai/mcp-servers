@@ -150,7 +150,7 @@ export function registerPullRequestTools(server: McpServer, octokit: Octokit) {
 				}
 				markdown += `\n`
 
-				prs.forEach((pr) => {
+				prs.forEach(pr => {
 					markdown += `## #${pr.number}: ${pr.title}\n\n`
 					markdown += `- **State**: ${pr.state}\n`
 					markdown += `- **Author**: ${pr.user?.login || "Unknown"}\n`
@@ -163,11 +163,11 @@ export function registerPullRequestTools(server: McpServer, octokit: Octokit) {
 					}
 
 					if (pr.labels && pr.labels.length > 0) {
-						markdown += `- **Labels**: ${pr.labels.map((l) => l.name).join(", ")}\n`
+						markdown += `- **Labels**: ${pr.labels.map(l => l.name).join(", ")}\n`
 					}
 
 					if (pr.assignees && pr.assignees.length > 0) {
-						markdown += `- **Assignees**: ${pr.assignees.map((a) => a.login).join(", ")}\n`
+						markdown += `- **Assignees**: ${pr.assignees.map(a => a.login).join(", ")}\n`
 					}
 
 					markdown += `- **URL**: ${pr.html_url}\n`
@@ -288,12 +288,12 @@ export function registerPullRequestTools(server: McpServer, octokit: Octokit) {
 
 				// Group files by status
 				const grouped = {
-					added: files.filter((f) => f.status === "added"),
-					modified: files.filter((f) => f.status === "modified"),
-					removed: files.filter((f) => f.status === "removed"),
-					renamed: files.filter((f) => f.status === "renamed"),
+					added: files.filter(f => f.status === "added"),
+					modified: files.filter(f => f.status === "modified"),
+					removed: files.filter(f => f.status === "removed"),
+					renamed: files.filter(f => f.status === "renamed"),
 					other: files.filter(
-						(f) =>
+						f =>
 							!["added", "modified", "removed", "renamed"].includes(f.status),
 					),
 				}
@@ -301,7 +301,7 @@ export function registerPullRequestTools(server: McpServer, octokit: Octokit) {
 				// Show files by status
 				if (grouped.added.length > 0) {
 					markdown += `## Added Files\n\n`
-					grouped.added.forEach((file) => {
+					grouped.added.forEach(file => {
 						markdown += `- **${file.filename}** (+${file.additions} lines)\n`
 					})
 					markdown += `\n`
@@ -309,7 +309,7 @@ export function registerPullRequestTools(server: McpServer, octokit: Octokit) {
 
 				if (grouped.modified.length > 0) {
 					markdown += `## Modified Files\n\n`
-					grouped.modified.forEach((file) => {
+					grouped.modified.forEach(file => {
 						markdown += `- **${file.filename}** (+${file.additions} -${file.deletions})\n`
 						if (file.patch) {
 							markdown += `  - [View Diff](${file.blob_url})\n`
@@ -320,7 +320,7 @@ export function registerPullRequestTools(server: McpServer, octokit: Octokit) {
 
 				if (grouped.removed.length > 0) {
 					markdown += `## Removed Files\n\n`
-					grouped.removed.forEach((file) => {
+					grouped.removed.forEach(file => {
 						markdown += `- **${file.filename}** (-${file.deletions} lines)\n`
 					})
 					markdown += `\n`
@@ -328,7 +328,7 @@ export function registerPullRequestTools(server: McpServer, octokit: Octokit) {
 
 				if (grouped.renamed.length > 0) {
 					markdown += `## Renamed Files\n\n`
-					grouped.renamed.forEach((file) => {
+					grouped.renamed.forEach(file => {
 						markdown += `- **${file.previous_filename}** → **${file.filename}**`
 						if (file.changes > 0) {
 							markdown += ` (+${file.additions} -${file.deletions})`
@@ -340,7 +340,7 @@ export function registerPullRequestTools(server: McpServer, octokit: Octokit) {
 
 				if (grouped.other.length > 0) {
 					markdown += `## Other Changes\n\n`
-					grouped.other.forEach((file) => {
+					grouped.other.forEach(file => {
 						markdown += `- **${file.filename}** (${file.status}) (+${file.additions} -${file.deletions})\n`
 					})
 					markdown += `\n`
@@ -394,16 +394,16 @@ export function registerPullRequestTools(server: McpServer, octokit: Octokit) {
 
 					// Group statuses by state
 					const grouped = {
-						success: status.statuses.filter((s) => s.state === "success"),
-						failure: status.statuses.filter((s) => s.state === "failure"),
-						error: status.statuses.filter((s) => s.state === "error"),
-						pending: status.statuses.filter((s) => s.state === "pending"),
+						success: status.statuses.filter(s => s.state === "success"),
+						failure: status.statuses.filter(s => s.state === "failure"),
+						error: status.statuses.filter(s => s.state === "error"),
+						pending: status.statuses.filter(s => s.state === "pending"),
 					}
 
 					// Show failures and errors first
 					if (grouped.failure.length > 0) {
 						markdown += `### Failed\n\n`
-						grouped.failure.forEach((check) => {
+						grouped.failure.forEach(check => {
 							markdown += `- **${check.context}**: ${check.description || "No description"}\n`
 							if (check.target_url) {
 								markdown += `  - [View Details](${check.target_url})\n`
@@ -414,7 +414,7 @@ export function registerPullRequestTools(server: McpServer, octokit: Octokit) {
 
 					if (grouped.error.length > 0) {
 						markdown += `### Errors\n\n`
-						grouped.error.forEach((check) => {
+						grouped.error.forEach(check => {
 							markdown += `- **${check.context}**: ${check.description || "No description"}\n`
 							if (check.target_url) {
 								markdown += `  - [View Details](${check.target_url})\n`
@@ -425,7 +425,7 @@ export function registerPullRequestTools(server: McpServer, octokit: Octokit) {
 
 					if (grouped.pending.length > 0) {
 						markdown += `### Pending\n\n`
-						grouped.pending.forEach((check) => {
+						grouped.pending.forEach(check => {
 							markdown += `- **${check.context}**: ${check.description || "No description"}\n`
 							if (check.target_url) {
 								markdown += `  - [View Details](${check.target_url})\n`
@@ -436,7 +436,7 @@ export function registerPullRequestTools(server: McpServer, octokit: Octokit) {
 
 					if (grouped.success.length > 0) {
 						markdown += `### Passed\n\n`
-						grouped.success.forEach((check) => {
+						grouped.success.forEach(check => {
 							markdown += `- **${check.context}**: ${check.description || "No description"}\n`
 						})
 						markdown += `\n`
@@ -517,8 +517,8 @@ export function registerPullRequestTools(server: McpServer, octokit: Octokit) {
 
 				// Combine and sort all comments by creation date
 				const allComments = [
-					...issueComments.data.map((c) => ({ ...c, type: "issue" })),
-					...reviewComments.data.map((c) => ({ ...c, type: "review" })),
+					...issueComments.data.map(c => ({ ...c, type: "issue" })),
+					...reviewComments.data.map(c => ({ ...c, type: "review" })),
 				].sort(
 					(a, b) =>
 						new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),

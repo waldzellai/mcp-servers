@@ -1,13 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { isFullDatabase, isFullPage } from "@notionhq/client"
 import type { Client } from "@notionhq/client"
-import type {
-	CreateDatabaseResponse,
-	DatabaseObjectResponse,
-	PageObjectResponse,
-	PartialDatabaseObjectResponse,
-	UpdateDatabaseResponse,
-} from "@notionhq/client/build/src/api-endpoints.js"
 import { z } from "zod"
 import {
 	cleanNotionId,
@@ -38,8 +31,8 @@ export function registerDatabaseTools(server: McpServer, notion: Client) {
 
 				// Extract essential database information
 				const databases = response.results
-					.filter((item) => item.object === "database")
-					.map((db) => {
+					.filter(item => item.object === "database")
+					.map(db => {
 						// Try to extract title regardless of full/partial response
 						let title = "Untitled"
 						if (
@@ -119,8 +112,8 @@ export function registerDatabaseTools(server: McpServer, notion: Client) {
 
 				// Format the response for better readability
 				const pages = response.results
-					.filter((item) => item.object === "page")
-					.map((page) => {
+					.filter(item => item.object === "page")
+					.map(page => {
 						const properties = isFullPage(page)
 							? extractPageProperties(page)
 							: {}

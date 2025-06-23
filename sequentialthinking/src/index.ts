@@ -1,121 +1,134 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
+import { z } from "zod"
 
 // Optional: Define configuration schema to require configuration at connection time
 export const configSchema = z.object({
-  debug: z.boolean().default(false).describe("Enable debug logging"),
-});
+	debug: z.boolean().default(false).describe("Enable debug logging"),
+})
 
 interface ThoughtData {
-  thought: string;
-  thoughtNumber: number;
-  totalThoughts: number;
-  isRevision?: boolean;
-  revisesThought?: number;
-  branchFromThought?: number;
-  branchId?: string;
-  needsMoreThoughts?: boolean;
-  nextThoughtNeeded: boolean;
+	thought: string
+	thoughtNumber: number
+	totalThoughts: number
+	isRevision?: boolean
+	revisesThought?: number
+	branchFromThought?: number
+	branchId?: string
+	needsMoreThoughts?: boolean
+	nextThoughtNeeded: boolean
 }
 
 class SequentialThinkingServer {
-  private thoughtHistory: ThoughtData[] = [];
-  private branches: Record<string, ThoughtData[]> = {};
+	private thoughtHistory: ThoughtData[] = []
+	private branches: Record<string, ThoughtData[]> = {}
 
-  private validateThoughtData(input: unknown): ThoughtData {
-    const data = input as Record<string, unknown>;
+	private validateThoughtData(input: unknown): ThoughtData {
+		const data = input as Record<string, unknown>
 
-    if (!data.thought || typeof data.thought !== 'string') {
-      throw new Error('Invalid thought: must be a string');
-    }
-    if (!data.thoughtNumber || typeof data.thoughtNumber !== 'number') {
-      throw new Error('Invalid thoughtNumber: must be a number');
-    }
-    if (!data.totalThoughts || typeof data.totalThoughts !== 'number') {
-      throw new Error('Invalid totalThoughts: must be a number');
-    }
-    if (typeof data.nextThoughtNeeded !== 'boolean') {
-      throw new Error('Invalid nextThoughtNeeded: must be a boolean');
-    }
+		if (!data.thought || typeof data.thought !== "string") {
+			throw new Error("Invalid thought: must be a string")
+		}
+		if (!data.thoughtNumber || typeof data.thoughtNumber !== "number") {
+			throw new Error("Invalid thoughtNumber: must be a number")
+		}
+		if (!data.totalThoughts || typeof data.totalThoughts !== "number") {
+			throw new Error("Invalid totalThoughts: must be a number")
+		}
+		if (typeof data.nextThoughtNeeded !== "boolean") {
+			throw new Error("Invalid nextThoughtNeeded: must be a boolean")
+		}
 
-    return {
-      thought: data.thought,
-      thoughtNumber: data.thoughtNumber,
-      totalThoughts: data.totalThoughts,
-      nextThoughtNeeded: data.nextThoughtNeeded,
-      isRevision: data.isRevision as boolean | undefined,
-      revisesThought: data.revisesThought as number | undefined,
-      branchFromThought: data.branchFromThought as number | undefined,
-      branchId: data.branchId as string | undefined,
-      needsMoreThoughts: data.needsMoreThoughts as boolean | undefined,
-    };
-  }
+		return {
+			thought: data.thought,
+			thoughtNumber: data.thoughtNumber,
+			totalThoughts: data.totalThoughts,
+			nextThoughtNeeded: data.nextThoughtNeeded,
+			isRevision: data.isRevision as boolean | undefined,
+			revisesThought: data.revisesThought as number | undefined,
+			branchFromThought: data.branchFromThought as number | undefined,
+			branchId: data.branchId as string | undefined,
+			needsMoreThoughts: data.needsMoreThoughts as boolean | undefined,
+		}
+	}
 
+	public processThought(input: unknown): {
+		content: Array<{ type: string; text: string }>
+		isError?: boolean
+	} {
+		try {
+			const validatedInput = this.validateThoughtData(input)
 
+			if (validatedInput.thoughtNumber > validatedInput.totalThoughts) {
+				validatedInput.totalThoughts = validatedInput.thoughtNumber
+			}
 
-  public processThought(input: unknown): { content: Array<{ type: string; text: string }>; isError?: boolean } {
-    try {
-      const validatedInput = this.validateThoughtData(input);
+			this.thoughtHistory.push(validatedInput)
 
-      if (validatedInput.thoughtNumber > validatedInput.totalThoughts) {
-        validatedInput.totalThoughts = validatedInput.thoughtNumber;
-      }
+			if (validatedInput.branchFromThought && validatedInput.branchId) {
+				if (!this.branches[validatedInput.branchId]) {
+					this.branches[validatedInput.branchId] = []
+				}
+				this.branches[validatedInput.branchId].push(validatedInput)
+			}
 
-      this.thoughtHistory.push(validatedInput);
-
-      if (validatedInput.branchFromThought && validatedInput.branchId) {
-        if (!this.branches[validatedInput.branchId]) {
-          this.branches[validatedInput.branchId] = [];
-        }
-        this.branches[validatedInput.branchId].push(validatedInput);
-      }
-
-      return {
-        content: [{
-          type: "text" as const,
-          text: JSON.stringify({
-            thoughtNumber: validatedInput.thoughtNumber,
-            totalThoughts: validatedInput.totalThoughts,
-            nextThoughtNeeded: validatedInput.nextThoughtNeeded,
-            branches: Object.keys(this.branches),
-            thoughtHistoryLength: this.thoughtHistory.length
-          }, null, 2)
-        }]
-      };
-    } catch (error) {
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify({
-            error: error instanceof Error ? error.message : String(error),
-            status: 'failed'
-          }, null, 2)
-        }],
-        isError: true
-      };
-    }
-  }
+			return {
+				content: [
+					{
+						type: "text" as const,
+						text: JSON.stringify(
+							{
+								thoughtNumber: validatedInput.thoughtNumber,
+								totalThoughts: validatedInput.totalThoughts,
+								nextThoughtNeeded: validatedInput.nextThoughtNeeded,
+								branches: Object.keys(this.branches),
+								thoughtHistoryLength: this.thoughtHistory.length,
+							},
+							null,
+							2,
+						),
+					},
+				],
+			}
+		} catch (error) {
+			return {
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify(
+							{
+								error: error instanceof Error ? error.message : String(error),
+								status: "failed",
+							},
+							null,
+							2,
+						),
+					},
+				],
+				isError: true,
+			}
+		}
+	}
 }
 
 export default function createStatelessServer({
-  config,
+	config,
 }: {
-  config: z.infer<typeof configSchema>;
+	config: z.infer<typeof configSchema>
 }) {
-  const server = new McpServer({
-    name: "Sequential Thinking",
-    version: "1.0.0",
-  });
+	const server = new McpServer({
+		name: "Sequential Thinking",
+		version: "1.0.0",
+	})
 
-  // Create a single instance of the thinking server
-  // Note: This maintains state across calls, which may not be ideal for a stateless server
-  // Consider storing state externally or passing it with each request if true statelessness is needed
-  const thinkingServer = new SequentialThinkingServer();
+	// Create a single instance of the thinking server
+	// Note: This maintains state across calls, which may not be ideal for a stateless server
+	// Consider storing state externally or passing it with each request if true statelessness is needed
+	const thinkingServer = new SequentialThinkingServer()
 
-  // Add the sequential thinking tool
-  server.tool(
-    "sequentialthinking",
-    `A detailed tool for dynamic and reflective problem-solving through thoughts.
+	// Add the sequential thinking tool
+	server.tool(
+		"sequentialthinking",
+		`A detailed tool for dynamic and reflective problem-solving through thoughts.
 This tool helps analyze problems through a flexible thinking process that can adapt and evolve.
 Each thought can build on, question, or revise previous insights as understanding deepens.
 
@@ -169,28 +182,50 @@ You should:
 9. Repeat the process until satisfied with the solution
 10. Provide a single, ideally correct answer as the final output
 11. Only set next_thought_needed to false when truly done and a satisfactory answer is reached`,
-    {
-      thought: z.string().describe("Your current thinking step"),
-      nextThoughtNeeded: z.boolean().describe("Whether another thought step is needed"),
-      thoughtNumber: z.number().int().min(1).describe("Current thought number"),
-      totalThoughts: z.number().int().min(1).describe("Estimated total thoughts needed"),
-      isRevision: z.boolean().optional().describe("Whether this revises previous thinking"),
-      revisesThought: z.number().int().min(1).optional().describe("Which thought is being reconsidered"),
-      branchFromThought: z.number().int().min(1).optional().describe("Branching point thought number"),
-      branchId: z.string().optional().describe("Branch identifier"),
-      needsMoreThoughts: z.boolean().optional().describe("If more thoughts are needed"),
-    },
-    async (args, extra) => {
-      const result = thinkingServer.processThought(args);
-      // Only return the expected format without isError
-      return {
-        content: result.content.map(item => ({
-          type: "text" as const,
-          text: item.text
-        }))
-      };
-    }
-  );
+		{
+			thought: z.string().describe("Your current thinking step"),
+			nextThoughtNeeded: z
+				.boolean()
+				.describe("Whether another thought step is needed"),
+			thoughtNumber: z.number().int().min(1).describe("Current thought number"),
+			totalThoughts: z
+				.number()
+				.int()
+				.min(1)
+				.describe("Estimated total thoughts needed"),
+			isRevision: z
+				.boolean()
+				.optional()
+				.describe("Whether this revises previous thinking"),
+			revisesThought: z
+				.number()
+				.int()
+				.min(1)
+				.optional()
+				.describe("Which thought is being reconsidered"),
+			branchFromThought: z
+				.number()
+				.int()
+				.min(1)
+				.optional()
+				.describe("Branching point thought number"),
+			branchId: z.string().optional().describe("Branch identifier"),
+			needsMoreThoughts: z
+				.boolean()
+				.optional()
+				.describe("If more thoughts are needed"),
+		},
+		async (args, extra) => {
+			const result = thinkingServer.processThought(args)
+			// Only return the expected format without isError
+			return {
+				content: result.content.map(item => ({
+					type: "text" as const,
+					text: item.text,
+				})),
+			}
+		},
+	)
 
-  return server.server;
+	return server.server
 }

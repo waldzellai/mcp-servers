@@ -22,7 +22,7 @@ function extractTitle(item: SearchResult): string {
 		"title" in item &&
 		Array.isArray(item.title)
 	) {
-		const titleText = item.title.map((t) => t.plain_text).join("")
+		const titleText = item.title.map(t => t.plain_text).join("")
 		if (titleText) return titleText
 	}
 
@@ -35,7 +35,7 @@ function extractTitle(item: SearchResult): string {
 				"title" in prop &&
 				Array.isArray(prop.title)
 			) {
-				const titleText = prop.title.map((t) => t.plain_text).join("")
+				const titleText = prop.title.map(t => t.plain_text).join("")
 				if (titleText) return titleText
 			}
 		}

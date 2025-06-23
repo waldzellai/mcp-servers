@@ -28,7 +28,7 @@ export function registerRepositoryResource(
 				let contents: any[] = []
 				if (Array.isArray(response.data)) {
 					// Directory listing
-					contents = response.data.map((entry) => ({
+					contents = response.data.map(entry => ({
 						uri: entry.html_url,
 						mimeType: entry.type === "file" ? "text/plain" : "text/directory",
 						text: entry.name,

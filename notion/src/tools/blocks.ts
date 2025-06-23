@@ -276,9 +276,7 @@ function extractBlockContent(
 		case "table_row":
 			return {
 				...fullBlockInfo,
-				cells: block.table_row.cells.map((cell) =>
-					extractTextFromRichText(cell),
-				),
+				cells: block.table_row.cells.map(cell => extractTextFromRichText(cell)),
 			}
 
 		case "column_list":
@@ -375,7 +373,7 @@ export function registerBlockTools(server: McpServer, notion: Client) {
 				const response = await notion.blocks.children.list(params)
 
 				// Extract content from child blocks
-				const children = response.results.map((block) =>
+				const children = response.results.map(block =>
 					extractBlockContent(block),
 				)
 

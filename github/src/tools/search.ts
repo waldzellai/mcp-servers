@@ -33,7 +33,7 @@ export function registerSearchTools(server: McpServer, octokit: Octokit) {
 				})
 
 				// Extract only essential information
-				const repositories = response.data.items.map((repo) => ({
+				const repositories = response.data.items.map(repo => ({
 					full_name: repo.full_name,
 					description:
 						repo.description?.slice(0, 150) +
@@ -114,7 +114,7 @@ export function registerSearchTools(server: McpServer, octokit: Octokit) {
 				})
 
 				// Extract only essential information including text matches
-				const results = response.data.items.map((item) => ({
+				const results = response.data.items.map(item => ({
 					repository: item.repository.full_name,
 					path: item.path,
 					// Only include the first match fragment for conciseness
@@ -184,7 +184,7 @@ export function registerSearchTools(server: McpServer, octokit: Octokit) {
 				})
 
 				// Extract only essential information
-				const users = response.data.items.map((user) => ({
+				const users = response.data.items.map(user => ({
 					login: user.login,
 					type: user.type,
 					// Only include name if it exists and is different from login

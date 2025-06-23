@@ -73,12 +73,12 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 						})
 
 						// Group by type
-						const dirs = contents.filter((item) => item.type === "dir")
-						const files = contents.filter((item) => item.type === "file")
+						const dirs = contents.filter(item => item.type === "dir")
+						const files = contents.filter(item => item.type === "file")
 
 						if (dirs.length > 0) {
 							markdown += `### Directories\n`
-							dirs.forEach((dir) => {
+							dirs.forEach(dir => {
 								markdown += `- **${dir.name}/**\n`
 							})
 							markdown += `\n`
@@ -86,7 +86,7 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 
 						if (files.length > 0) {
 							markdown += `### Files\n`
-							files.forEach((file) => {
+							files.forEach(file => {
 								const size = file.size
 									? ` (${(file.size / 1024).toFixed(1)} KB)`
 									: ""
@@ -155,7 +155,7 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 
 				if (commit.files && commit.files.length > 0) {
 					markdown += `\n## Files\n\n`
-					commit.files.forEach((file) => {
+					commit.files.forEach(file => {
 						const status =
 							file.status === "added"
 								? "[A]"
@@ -234,7 +234,7 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 				}
 				markdown += `\n`
 
-				commits.forEach((commit) => {
+				commits.forEach(commit => {
 					const shortSha = commit.sha.substring(0, 7)
 					const message = commit.commit.message.split("\n")[0] // First line only
 					const author =
@@ -313,7 +313,7 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 				}
 				markdown += `\n`
 
-				branches.forEach((branch) => {
+				branches.forEach(branch => {
 					const isDefault = branch.name === defaultBranch
 					markdown += `## ${branch.name}${isDefault ? " (default)" : ""}\n\n`
 					markdown += `- **SHA:** ${branch.commit.sha.substring(0, 7)}\n`
@@ -345,15 +345,15 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 			owner: z.string().describe("Repository owner (username or organization)"),
 			repo: z.string().describe("Repository name"),
 			path: z.string().describe("Path where to create/update the file"),
-			content: z
-				.string()
-				.describe("Content of the file"),
+			content: z.string().describe("Content of the file"),
 			message: z.string().describe("Commit message"),
 			branch: z.string().describe("Branch to create/update the file in"),
 			sha: z
 				.string()
 				.optional()
-				.describe("Full SHA of the current file blob (required for updates, must be the complete 40-character SHA)"),
+				.describe(
+					"Full SHA of the current file blob (required for updates, must be the complete 40-character SHA)",
+				),
 		},
 		async ({ owner, repo, path, content, message, branch, sha }) => {
 			try {
@@ -382,7 +382,7 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 				// Format response as markdown
 				let markdown = `# File ${response.data.commit.message}\n\n`
 				markdown += `**Path:** ${response.data.content?.path || path}\n`
-				markdown += `**SHA:** ${response.data.content?.sha || 'N/A'}\n`
+				markdown += `**SHA:** ${response.data.content?.sha || "N/A"}\n`
 				markdown += `**Size:** ${response.data.content?.size || 0} bytes\n\n`
 				markdown += `## Commit Details\n\n`
 				markdown += `- **Commit SHA:** ${response.data.commit.sha}\n`
@@ -668,7 +668,7 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 				}
 				markdown += `\n`
 
-				tags.forEach((tag) => {
+				tags.forEach(tag => {
 					markdown += `## ${tag.name}\n\n`
 					markdown += `- **SHA:** ${tag.commit.sha.substring(0, 7)}\n`
 					markdown += `- **URL:** ${tag.commit.url.replace("api.github.com/repos", "github.com").replace("/commits/", "/releases/tag/")}\n`
@@ -759,7 +759,7 @@ export function registerRepositoryTools(server: McpServer, octokit: Octokit) {
 				})
 
 				// Create tree entries for all files
-				const treeItems = files.map((file) => ({
+				const treeItems = files.map(file => ({
 					path: file.path,
 					mode: "100644" as const, // Regular file mode
 					type: "blob" as const,

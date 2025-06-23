@@ -121,7 +121,7 @@ export function registerIssueTools(server: McpServer, octokit: Octokit) {
 				markdown += `Found ${totalCount} total result(s), showing ${items.length}\n\n`
 				markdown += `**Query**: ${q}\n\n`
 
-				items.forEach((item) => {
+				items.forEach(item => {
 					const type = item.pull_request ? "PR" : "Issue"
 					markdown += `## ${type} #${item.number}: ${item.title}\n\n`
 					markdown += `- **Repository**: ${item.repository_url.split("/").slice(-2).join("/")}\n`
@@ -131,11 +131,11 @@ export function registerIssueTools(server: McpServer, octokit: Octokit) {
 					markdown += `- **Updated**: ${new Date(item.updated_at).toLocaleDateString()}\n`
 
 					if (item.labels && item.labels.length > 0) {
-						markdown += `- **Labels**: ${item.labels.map((l) => l.name).join(", ")}\n`
+						markdown += `- **Labels**: ${item.labels.map(l => l.name).join(", ")}\n`
 					}
 
 					if (item.assignees && item.assignees.length > 0) {
-						markdown += `- **Assignees**: ${item.assignees.map((a) => a.login).join(", ")}\n`
+						markdown += `- **Assignees**: ${item.assignees.map(a => a.login).join(", ")}\n`
 					}
 
 					markdown += `- **Comments**: ${item.comments}\n`
@@ -252,7 +252,7 @@ export function registerIssueTools(server: McpServer, octokit: Octokit) {
 				})
 
 				// Format the response as clean markdown
-				const issues = response.data.filter((item) => !item.pull_request) // Filter out PRs
+				const issues = response.data.filter(item => !item.pull_request) // Filter out PRs
 
 				if (issues.length === 0) {
 					return {
@@ -267,7 +267,7 @@ export function registerIssueTools(server: McpServer, octokit: Octokit) {
 				}
 				markdown += `\n`
 
-				issues.forEach((issue) => {
+				issues.forEach(issue => {
 					markdown += `## #${issue.number}: ${issue.title}\n\n`
 					markdown += `- **State**: ${issue.state}\n`
 					markdown += `- **Author**: ${issue.user?.login || "Unknown"}\n`
@@ -275,11 +275,11 @@ export function registerIssueTools(server: McpServer, octokit: Octokit) {
 					markdown += `- **Updated**: ${new Date(issue.updated_at).toLocaleDateString()}\n`
 
 					if (issue.labels && issue.labels.length > 0) {
-						markdown += `- **Labels**: ${issue.labels.map((l) => (typeof l === "string" ? l : l.name)).join(", ")}\n`
+						markdown += `- **Labels**: ${issue.labels.map(l => (typeof l === "string" ? l : l.name)).join(", ")}\n`
 					}
 
 					if (issue.assignees && issue.assignees.length > 0) {
-						markdown += `- **Assignees**: ${issue.assignees.map((a) => a.login).join(", ")}\n`
+						markdown += `- **Assignees**: ${issue.assignees.map(a => a.login).join(", ")}\n`
 					}
 
 					if (issue.milestone) {

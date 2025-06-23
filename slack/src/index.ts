@@ -105,7 +105,6 @@ function setupResources(
 	)
 }
 
-
 export const configSchema = z.object({
 	token: z.string(),
 	signingSecret: z.string().optional(),
@@ -113,11 +112,7 @@ export const configSchema = z.object({
 })
 
 // Create stateful server with Slack client configuration
-export default function ({
-	config,
-}: {
-	config: z.infer<typeof configSchema>
-}) {
+export default function ({ config }: { config: z.infer<typeof configSchema> }) {
 	try {
 		console.log("Starting Slack MCP Server...")
 
