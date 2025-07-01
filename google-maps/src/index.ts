@@ -130,7 +130,7 @@ interface DirectionsResponse extends GoogleMapsResponse {
 // Configuration schema
 export const configSchema = z.object({
   debug: z.boolean().default(false).describe("Enable debug logging"),
-  apiKey: z.string().describe("Google Maps API key"),
+  apiKey: z.string().describe("Google Maps API key. Get one from https://mapsplatform.google.com"),
 });
 
 export default function createStatelessServer({
