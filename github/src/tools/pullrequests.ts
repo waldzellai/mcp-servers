@@ -631,4 +631,212 @@ export function registerPullRequestTools(server: McpServer, octokit: Octokit) {
 			}
 		},
 	)
+
+	// Tool: Get Pull Request Review Comments
+	server.tool(
+		"get_pull_request_review_comments",
+		"Get review comments (line-by-line code comments) for a specific pull request.",
+		{
+			owner: z.string().describe("Repository owner"),
+			repo: z.string().describe("Repository name"),
+			pullNumber: z.number().describe("Pull request number"),
+			sort: z
+				.enum(["created", "updated"])
+				.optional()
+				.describe("Sort comments by created or updated time"),
+			direction: z
+				.enum(["asc", "desc"])
+				.optional()
+				.describe("Sort direction"),
+			since: z
+				.string()
+				.optional()
+				.describe("Only show comments updated after this time (ISO 8601 format)"),
+			per_page: z
+				.number()
+				.optional()
+				.default(10)
+				.describe("Results per page (default 10, max 100)"),
+			page: z
+				.number()
+				.optional()
+				.default(1)
+				.describe("Page number (default 1)"),
+		},
+		async ({ owner, repo, pullNumber, sort, direction, since, per_page, page }) => {
+			try {
+				const response = await octokit.rest.pulls.listReviewComments({
+					owner,
+					repo,
+					pull_number: pullNumber,
+					sort,
+					direction,
+					since,
+					per_page,
+					page,
+				})
+
+				const comments = response.data
+
+				if (comments.length === 0) {
+					return {
+						content: [
+							{
+								type: "text",
+								text: "No review comments found for this pull request.",
+							},
+						],
+					}
+				}
+
+				// Format as clean markdown
+				let markdown = `# Review Comments for Pull Request #${pullNumber}\n\n`
+				markdown += `Showing ${comments.length} review comment(s) - Page ${page}\n`
+				if (comments.length === per_page) {
+					markdown += `*Note: More results may be available. Use 'page' parameter to see next page.*\n`
+				}
+				markdown += `\n`
+
+				comments.forEach((comment, index) => {
+					markdown += `## Comment ${index + 1}\n\n`
+					markdown += `- **Author:** ${comment.user?.login || "Unknown"}\n`
+					markdown += `- **File:** ${comment.path}\n`
+					
+					if (comment.line) {
+						markdown += `- **Line:** ${comment.line}\n`
+					}
+					
+					if (comment.start_line && comment.start_line !== comment.line) {
+						markdown += `- **Lines:** ${comment.start_line}-${comment.line}\n`
+					}
+					
+					markdown += `- **Side:** ${comment.side || "RIGHT"}\n`
+					markdown += `- **Created:** ${new Date(comment.created_at).toLocaleDateString()}\n`
+					
+					if (comment.updated_at !== comment.created_at) {
+						markdown += `- **Updated:** ${new Date(comment.updated_at).toLocaleDateString()}\n`
+					}
+					
+					if (comment.commit_id) {
+						markdown += `- **Commit:** ${comment.commit_id.substring(0, 7)}\n`
+					}
+
+					if (comment.in_reply_to_id) {
+						markdown += `- **Reply to:** Comment #${comment.in_reply_to_id}\n`
+					}
+
+					markdown += `\n**Comment:**\n${comment.body}\n`
+					
+					if (comment.html_url) {
+						markdown += `\n**URL:** ${comment.html_url}\n`
+					}
+
+					markdown += `\n---\n\n`
+				})
+
+				return {
+					content: [{ type: "text", text: markdown }],
+				}
+			} catch (e: any) {
+				return {
+					content: [{ type: "text", text: `Error: ${e.message}` }],
+				}
+			}
+		},
+	)
+
+	// Tool: Create Pull Request Review Comment
+	server.tool(
+		"create_pull_request_review_comment",
+		"Create a review comment (line-by-line code comment) on a pull request.",
+		{
+			owner: z.string().describe("Repository owner"),
+			repo: z.string().describe("Repository name"),
+			pullNumber: z.number().describe("Pull request number"),
+			body: z.string().describe("Comment body"),
+			commit_id: z.string().describe("SHA of the commit to comment on"),
+			path: z.string().describe("Relative path to the file being commented on"),
+			line: z.number().optional().describe("Line number for single-line comment"),
+			start_line: z.number().optional().describe("Start line for multi-line comment"),
+			side: z
+				.enum(["LEFT", "RIGHT"])
+				.optional()
+				.default("RIGHT")
+				.describe("Side of diff (LEFT for deletion, RIGHT for addition)"),
+			start_side: z
+				.enum(["LEFT", "RIGHT"])
+				.optional()
+				.describe("Start side for multi-line comment"),
+			in_reply_to: z
+				.number()
+				.optional()
+				.describe("ID of review comment to reply to"),
+		},
+		async ({
+			owner,
+			repo,
+			pullNumber,
+			body,
+			commit_id,
+			path,
+			line,
+			start_line,
+			side,
+			start_side,
+			in_reply_to,
+		}) => {
+			try {
+				const response = await octokit.rest.pulls.createReviewComment({
+					owner,
+					repo,
+					pull_number: pullNumber,
+					body,
+					commit_id,
+					path,
+					line,
+					start_line,
+					side,
+					start_side,
+					in_reply_to,
+				})
+
+				// Format response as clean markdown
+				const comment = response.data
+				let markdown = `# Review Comment Created for Pull Request #${pullNumber}\n\n`
+				markdown += `- **Comment ID:** ${comment.id}\n`
+				markdown += `- **Author:** ${comment.user?.login || "Unknown"}\n`
+				markdown += `- **File:** ${comment.path}\n`
+				
+				if (comment.line) {
+					markdown += `- **Line:** ${comment.line}\n`
+				}
+				
+				if (comment.start_line && comment.start_line !== comment.line) {
+					markdown += `- **Lines:** ${comment.start_line}-${comment.line}\n`
+				}
+				
+				markdown += `- **Side:** ${comment.side || "RIGHT"}\n`
+				markdown += `- **Created:** ${new Date(comment.created_at).toLocaleDateString()}\n`
+				
+				if (comment.commit_id) {
+					markdown += `- **Commit:** ${comment.commit_id.substring(0, 7)}\n`
+				}
+
+				if (comment.in_reply_to_id) {
+					markdown += `- **Reply to:** Comment #${comment.in_reply_to_id}\n`
+				}
+
+				markdown += `\n**Comment:**\n${comment.body}\n`
+				markdown += `\n**URL:** ${comment.html_url}\n`
+
+				return {
+					content: [{ type: "text", text: markdown }],
+				}
+			} catch (e: any) {
+				return {
+					content: [{ type: "text", text: `Error: ${e.message}` }],
+				}
+			}
+		},
+	)
 }

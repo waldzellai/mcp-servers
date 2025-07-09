@@ -42,3 +42,5 @@ Tools for managing pull requests:
 - `merge_pull_request`: Merge a pull request
 - `get_pull_request_files`: Get files changed in a pull request
 - `get_pull_request_status`: Get the status of a pull request
+- `get_pull_request_review_comments`: Get review comments (line-by-line code comments) for a pull request
+- `create_pull_request_review_comment`: Create a review comment on a pull request
